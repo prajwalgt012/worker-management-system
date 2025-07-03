@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Mark Attendance</title>
+  <meta charset="UTF-8" />
+  <link rel="stylesheet" href="style.css" />
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+</head>
+<body>
+  <div class="card" style="max-width: 950px;">
+    <h2>📅 Mark Attendance</h2>
+
+    <label for="date" style="color: gold;">Select Date:</label><br />
+    <input type="date" id="date" style="margin: 10px 0;" />
+
+    <div id="attendanceList"></div>
+
+    <button onclick="submitAttendance()">✅ Submit Attendance</button>
+    <p id="status" style="margin-top: 10px;"></p>
+  </div>
+
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyC3aue5Fg1Rpqk3rzkjQiQTBe76U6RA7GM",
+      authDomain: "worker-management-50d6d.firebaseapp.com",
+      projectId: "worker-management-50d6d"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+
+    const listDiv = document.getElementById("attendanceList");
+    const status = document.getElementById("status");
+
+    let attendance = {}; // {workerId: "full" | "half" | "absent"}
+
+    function loadWorkers() {
+      db.collection("workers").orderBy("name").get().then(snapshot => {
+        let html = "<table style='width:100%; color:white; border-collapse: collapse;'>";
+        html += "<tr style='background:gold; color:black;'><th>Name</th><th>Village</th><th>Attendance</th></tr>";
+
+        snapshot.forEach(doc => {
+          const w = doc.data();
+          attendance[doc.id] = "full"; // default value
+          html += `
+            <tr>
+              <td>${w.name}</td>
+              <td>${w.village}</td>
+              <td>
+                <select onchange="mark('${doc.id}', this.value)">
+                  <option value="full" selected>✅ Full Day</option>
+                  <option value="half">🌓 Half Day</option>
+                  <option value="absent">❌ Absent</option>
+                </select>
+              </td>
+            </tr>`;
+        });
+
+        html += "</table>";
+        listDiv.innerHTML = html;
+      });
+    }
+
+    function mark(id, val) {
+      attendance[id] = val;
+    }
+
+    function submitAttendance() {
+      const selectedDate = document.getElementById("date").value;
+      if (!selectedDate) {
+        status.style.color = "red";
+        status.innerText = "⚠️ Please select a date.";
+        return;
+      }
+
+      const promises = Object.entries(attendance).map(([workerId, status]) => {
+        return db.collection("attendance").add({
+          workerId,
+          date: selectedDate,
+          status, // "full", "half", or "absent"
+          timestamp: firebase.firestore.FieldValue.serverTimestamp()
+        });
+      });
+
+      Promise.all(promises)
+        .then(() => {
+          status.style.color = "lightgreen";
+          status.innerText = "✅ Attendance submitted successfully!";
+        })
+        .catch(err => {
+          status.style.color = "red";
+          status.innerText = "Error: " + err.message;
+        });
+    }
+
+    loadWorkers();
+  </script>
+</body>
+</html>
