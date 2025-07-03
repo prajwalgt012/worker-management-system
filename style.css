@@ -84,3 +84,17 @@ button:hover {
 .dashboard button:hover {
   background: linear-gradient(to right, #5a00ff, #aa3fff);
 }
+.hidden {
+  display: none;
+}
+
+td input, td select {
+  width: 100%;
+  padding: 4px;
+  margin-top: 4px;
+  background: #2a2a2a;
+  color: white;
+  border: 1px solid #444;
+  border-radius: 4px;
+}
+
