@@ -8,19 +8,20 @@
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
 </head>
 <body>
-  <h1>Welcome, Manager</h1>
-  <p id="userEmail"></p>
+  <div class="card">
+    <h1>Manager Dashboard</h1>
+    <p id="userEmail"></p>
 
-  <div class="dashboard">
-    <button onclick="goTo('add-worker.html')">➕ Add Worker</button>
-    <button onclick="goTo('view-workers.html')">👥 View & Edit Workers</button>
-    <button onclick="goTo('mark-attendance.html')">🕒 Mark Attendance</button>
-    <button onclick="goTo('payments.html')">💰 View Payments</button>
-    <button onclick="logout()">🚪 Logout</button>
+    <div class="dashboard">
+      <button onclick="goTo('add-worker.html')">➕ Add Worker</button>
+      <button onclick="goTo('view-workers.html')">👥 View & Edit Workers</button>
+      <button onclick="goTo('mark-attendance.html')">🕒 Mark Attendance</button>
+      <button onclick="goTo('payments.html')">💰 View Payments</button>
+      <button onclick="logout()">🚪 Logout</button>
+    </div>
   </div>
 
   <script>
-    // Firebase config again (same as index.html)
     const firebaseConfig = {
       apiKey: "AIzaSyC3aue5Fg1Rpqk3rzkjQiQTBe76U6RA7GM",
       authDomain: "worker-management-50d6d.firebaseapp.com",
@@ -34,7 +35,6 @@
     firebase.initializeApp(firebaseConfig);
     const auth = firebase.auth();
 
-    // Auth check
     auth.onAuthStateChanged(user => {
       if (user) {
         document.getElementById("userEmail").innerText = "Logged in as: " + user.email;
