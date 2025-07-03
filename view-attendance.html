@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>📋 View & Edit Attendance</title>
+  <meta charset="UTF-8" />
+  <link rel="stylesheet" href="style.css" />
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+</head>
+<body>
+  <div class="card" style="max-width: 950px; margin: auto;">
+    <h2>📅 View & Edit Attendance by Date</h2>
+
+    <label for="date" style="color: gold;">Select Date:</label><br />
+    <input type="date" id="date" style="margin: 10px 0;" />
+    <button onclick="loadAttendance()">🔍 Load</button>
+
+    <div id="attendanceTable" style="margin-top: 20px;"></div>
+  </div>
+
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyC3aue5Fg1Rpqk3rzkjQiQTBe76U6RA7GM",
+      authDomain: "worker-management-50d6d.firebaseapp.com",
+      projectId: "worker-management-50d6d"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+
+    let globalDate = "";
+
+    async function loadAttendance() {
+      const selectedDate = document.getElementById("date").value;
+      if (!selectedDate) return alert("⚠️ Please select a date.");
+      globalDate = selectedDate;
+
+      const workersSnap = await db.collection("workers").get();
+      const workers = {};
+      workersSnap.forEach(doc => {
+        workers[doc.id] = doc.data();
+      });
+
+      const attendanceSnap = await db.collection("attendance")
+        .where("date", "==", selectedDate)
+        .get();
+
+      const records = {};
+      attendanceSnap.forEach(doc => {
+        records[doc.data().workerId] = { ...doc.data(), docId: doc.id };
+      });
+
+      let html = `<table style="width:100%; color:white; border-collapse: collapse;">
+        <tr style="background:gold; color:black;">
+          <th>Name</th><th>Village</th><th>Status</th><th>✏️ Edit</th>
+        </tr>`;
+
+      for (const id in workers) {
+        const w = workers[id];
+        const status = records[id]?.status || "absent";
+        const display = status === "full" ? "✅ Full" : status === "half" ? "🌓 Half" : "❌ Absent";
+
+        html += `
+          <tr>
+            <td>${w.name}</td>
+            <td>${w.village}</td>
+            <td id="status-${id}">${display}</td>
+            <td>
+              <select onchange="updateAttendance('${id}', this.value)">
+                <option value="">--Select--</option>
+                <option value="full">✅ Full</option>
+                <option value="half">🌓 Half</option>
+                <option value="absent">❌ Absent</option>
+              </select>
+            </td>
+          </tr>`;
+      }
+
+      html += "</table>";
+      document.getElementById("attendanceTable").innerHTML = html;
+    }
+
+    async function updateAttendance(workerId, newStatus) {
+      if (!globalDate || !newStatus) return;
+
+      // Check if entry exists
+      const snapshot = await db.collection("attendance")
+        .where("workerId", "==", workerId)
+        .where("date", "==", globalDate)
+        .get();
+
+      if (!snapshot.empty) {
+        // Update existing
+        const docId = snapshot.docs[0].id;
+        await db.collection("attendance").doc(docId).update({ status: newStatus });
+      } else {
+        // Create new
+        await db.collection("attendance").add({
+          workerId: workerId,
+          date: globalDate,
+          status: newStatus
+        });
+      }
+
+      // Update status cell UI
+      const emoji = newStatus === "full" ? "✅ Full" :
+                    newStatus === "half" ? "🌓 Half" : "❌ Absent";
+      document.getElementById("status-" + workerId).innerText = emoji;
+      alert("✅ Attendance updated");
+    }
+  </script>
+</body>
+</html>
