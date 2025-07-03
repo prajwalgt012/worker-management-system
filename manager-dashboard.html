@@ -1,11 +1,38 @@
-
 <!DOCTYPE html>
 <html>
 <head>
   <title>Manager Dashboard</title>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js"></script>
 </head>
 <body>
-  <h1>Welcome to Manager Dashboard</h1>
-  <p>More features like Add Worker, Attendance, Payments will go here.</p>
+  <h1>Welcome, Manager</h1>
+  <p id="userEmail"></p>
+
+  <button onclick="window.location.href='add-worker.html'">➕ Add Worker</button><br><br>
+  <button onclick="window.location.href='view-workers.html'">👥 View & Edit Workers</button><br><br>
+  <button onclick="window.location.href='mark-attendance.html'">🕒 Mark Attendance</button><br><br>
+  <button onclick="window.location.href='payments.html'">💰 View Payments</button><br><br>
+  <button onclick="logout()">🚪 Logout</button>
+
+  <script src="js/firebase.js"></script>
+  <script>
+    // Check if manager is logged in
+    firebase.auth().onAuthStateChanged(user => {
+      if (user) {
+        document.getElementById('userEmail').innerText = "Logged in as: " + user.email;
+      } else {
+        alert("Not logged in!");
+        window.location.href = "index.html";
+      }
+    });
+
+    function logout() {
+      firebase.auth().signOut().then(() => {
+        window.location.href = "index.html";
+      });
+    }
+  </script>
 </body>
 </html>
