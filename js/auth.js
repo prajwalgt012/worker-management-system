@@ -3,9 +3,10 @@ function login() {
   const password = document.getElementById("password").value;
 
   auth.signInWithEmailAndPassword(email, password)
-    .then(user => {
+    .then(() => {
       window.location.href = "manager-dashboard.html";
     })
-    .catch(error => alert(error.message));
+    .catch(error => {
+      alert("Login failed: " + error.message);
+    });
 }
-
