@@ -1,21 +1,63 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>📋 View & Edit Attendance</title>
+  <title>📅 Attendance Report (Date Range)</title>
   <meta charset="UTF-8" />
   <link rel="stylesheet" href="style.css" />
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+  <style>
+    body {
+      background: #1b1b1b;
+      font-family: 'Segoe UI', sans-serif;
+      color: white;
+      padding: 30px;
+    }
+
+    .card {
+      background: rgba(0, 0, 0, 0.8);
+      padding: 30px;
+      border-radius: 16px;
+      max-width: 1000px;
+      margin: auto;
+      box-shadow: 0 0 20px rgba(255, 255, 255, 0.1);
+    }
+
+    label {
+      font-weight: bold;
+      color: gold;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 20px;
+    }
+
+    th, td {
+      padding: 12px;
+      border: 1px solid #888;
+      text-align: center;
+    }
+
+    th {
+      background: gold;
+      color: black;
+    }
+  </style>
 </head>
 <body>
-  <div class="card" style="max-width: 950px; margin: auto;">
-    <h2>📅 View & Edit Attendance by Date</h2>
+  <div class="card">
+    <h2>📊 Attendance Report (Start to End Date)</h2>
 
-    <label for="date" style="color: gold;">Select Date:</label><br />
-    <input type="date" id="date" style="margin: 10px 0;" />
-    <button onclick="loadAttendance()">🔍 Load</button>
+    <label for="startDate">Start Date:</label>
+    <input type="date" id="startDate" />
+    <label for="endDate" style="margin-left: 20px;">End Date:</label>
+    <input type="date" id="endDate" />
 
-    <div id="attendanceTable" style="margin-top: 20px;"></div>
+    <button onclick="loadAttendance()" style="margin-left: 20px;">🔍 View Report</button>
+
+    <div id="attendanceTable"></div>
   </div>
 
   <script>
@@ -27,85 +69,56 @@
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
 
-    let globalDate = "";
-
     async function loadAttendance() {
-      const selectedDate = document.getElementById("date").value;
-      if (!selectedDate) return alert("⚠️ Please select a date.");
-      globalDate = selectedDate;
+      const start = document.getElementById("startDate").value;
+      const end = document.getElementById("endDate").value;
 
+      if (!start || !end) return alert("⚠️ Please select both start and end dates.");
+
+      const startDate = new Date(start);
+      const endDate = new Date(end);
+      if (startDate > endDate) return alert("❌ Start date must be before end date.");
+
+      // Load all workers
       const workersSnap = await db.collection("workers").get();
       const workers = {};
       workersSnap.forEach(doc => {
         workers[doc.id] = doc.data();
       });
 
+      // Load all attendance records in range
       const attendanceSnap = await db.collection("attendance")
-        .where("date", "==", selectedDate)
+        .where("date", ">=", start)
+        .where("date", "<=", end)
+        .orderBy("date")
         .get();
 
-      const records = {};
+      const records = [];
       attendanceSnap.forEach(doc => {
-        records[doc.data().workerId] = { ...doc.data(), docId: doc.id };
+        records.push(doc.data());
       });
 
-      let html = `<table style="width:100%; color:white; border-collapse: collapse;">
-        <tr style="background:gold; color:black;">
-          <th>Name</th><th>Village</th><th>Status</th><th>✏️ Edit</th>
+      let html = `<table>
+        <tr>
+          <th>Date</th><th>Name</th><th>Village</th><th>Status</th>
         </tr>`;
 
-      for (const id in workers) {
-        const w = workers[id];
-        const status = records[id]?.status || "absent";
-        const display = status === "full" ? "✅ Full" : status === "half" ? "🌓 Half" : "❌ Absent";
+      records.forEach(record => {
+        const worker = workers[record.workerId];
+        const status = record.status || "absent";
+        const emoji = status === "full" ? "✅ Full" :
+                      status === "half" ? "🌓 Half" : "❌ Absent";
 
-        html += `
-          <tr>
-            <td>${w.name}</td>
-            <td>${w.village}</td>
-            <td id="status-${id}">${display}</td>
-            <td>
-              <select onchange="updateAttendance('${id}', this.value)">
-                <option value="">--Select--</option>
-                <option value="full">✅ Full</option>
-                <option value="half">🌓 Half</option>
-                <option value="absent">❌ Absent</option>
-              </select>
-            </td>
-          </tr>`;
-      }
+        html += `<tr>
+          <td>${record.date}</td>
+          <td>${worker?.name || '❓ Unknown'}</td>
+          <td>${worker?.village || '-'}</td>
+          <td>${emoji}</td>
+        </tr>`;
+      });
 
       html += "</table>";
       document.getElementById("attendanceTable").innerHTML = html;
-    }
-
-    async function updateAttendance(workerId, newStatus) {
-      if (!globalDate || !newStatus) return;
-
-      // Check if entry exists
-      const snapshot = await db.collection("attendance")
-        .where("workerId", "==", workerId)
-        .where("date", "==", globalDate)
-        .get();
-
-      if (!snapshot.empty) {
-        // Update existing
-        const docId = snapshot.docs[0].id;
-        await db.collection("attendance").doc(docId).update({ status: newStatus });
-      } else {
-        // Create new
-        await db.collection("attendance").add({
-          workerId: workerId,
-          date: globalDate,
-          status: newStatus
-        });
-      }
-
-      // Update status cell UI
-      const emoji = newStatus === "full" ? "✅ Full" :
-                    newStatus === "half" ? "🌓 Half" : "❌ Absent";
-      document.getElementById("status-" + workerId).innerText = emoji;
-      alert("✅ Attendance updated");
     }
   </script>
 </body>
