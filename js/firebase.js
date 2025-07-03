@@ -1,3 +1,9 @@
+// Import modular Firebase functions
+import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
+import { getAuth } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js";
+import { getFirestore } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
+
+// Your Firebase config
 const firebaseConfig = {
   apiKey: "AIzaSyC3aue5Fg1Rpqk3rzkjQiQTBe76U6RA7GM",
   authDomain: "worker-management-50d6d.firebaseapp.com",
@@ -8,6 +14,11 @@ const firebaseConfig = {
   measurementId: "G-62MLYTQ6WJ"
 };
 
-firebase.initializeApp(firebaseConfig);
-const auth = firebase.auth();
-const db = firebase.firestore();
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+// Expose globally
+window.auth = auth;
+window.db = db;
