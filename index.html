@@ -1,18 +1,50 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Login - Worker Management</title>
-  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js"></script>
+  <title>Login - Worker Management System</title>
+  <meta charset="UTF-8" />
 </head>
 <body>
   <h2>Manager Login</h2>
-  <input type="email" id="email" placeholder="Email"><br><br>
-  <input type="password" id="password" placeholder="Password"><br><br>
+
+  <input type="email" id="email" placeholder="Email" /><br><br>
+  <input type="password" id="password" placeholder="Password" /><br><br>
   <button onclick="login()">Login</button>
 
-  <script src="js/firebase.js"></script>
-  <script src="js/auth.js"></script>
+  <!-- Firebase App + Auth + Firestore - Modular SDK -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
+    import { getAuth, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js";
+    import { getFirestore } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
+
+    // Your Firebase config
+    const firebaseConfig = {
+      apiKey: "AIzaSyC3aue5Fg1Rpqk3rzkjQiQTBe76U6RA7GM",
+      authDomain: "worker-management-50d6d.firebaseapp.com",
+      projectId: "worker-management-50d6d",
+      storageBucket: "worker-management-50d6d.firebasestorage.app",
+      messagingSenderId: "981353658232",
+      appId: "1:981353658232:web:d6869633271f3309133a8d",
+      measurementId: "G-62MLYTQ6WJ"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+
+    // Login function
+    window.login = function () {
+      const email = document.getElementById("email").value;
+      const password = document.getElementById("password").value;
+
+      signInWithEmailAndPassword(auth, email, password)
+        .then(() => {
+          window.location.href = "manager-dashboard.html";
+        })
+        .catch((error) => {
+          alert("Login failed: " + error.message);
+        });
+    };
+  </script>
 </body>
 </html>
