@@ -1,5 +1,4 @@
-
-/* Reset & font */
+/* Reset and font */
 * {
   margin: 0;
   padding: 0;
@@ -7,55 +6,65 @@
   font-family: 'Segoe UI', sans-serif;
 }
 
+/* Luxury Background */
 body {
-  background: #f4f4f4;
-  color: #333;
-  padding: 30px;
+  background: linear-gradient(to right, #1b1b1b, #121212);
+  color: #fff;
+  height: 100vh;
   display: flex;
-  flex-direction: column;
+  justify-content: center;
   align-items: center;
+}
+
+/* Card Box */
+.card {
+  background: #222;
+  padding: 40px;
+  border-radius: 12px;
+  box-shadow: 0 0 20px rgba(255, 215, 0, 0.3);
+  text-align: center;
+  width: 100%;
+  max-width: 400px;
 }
 
 /* Heading */
 h1, h2 {
+  color: gold;
   margin-bottom: 20px;
-  color: #333;
 }
 
-/* Input fields */
+/* Input Fields */
 input {
-  width: 280px;
-  padding: 10px;
-  margin: 8px 0;
-  border: 1px solid #ccc;
+  width: 100%;
+  padding: 12px;
+  margin: 10px 0;
+  border: none;
   border-radius: 6px;
   font-size: 16px;
+  background: #333;
+  color: #fff;
 }
 
 /* Buttons */
 button {
-  padding: 10px 20px;
+  width: 100%;
+  padding: 12px;
   font-size: 16px;
-  background-color: #007bff;
-  color: white;
+  background: gold;
+  color: #000;
   border: none;
   border-radius: 6px;
   cursor: pointer;
-  margin: 8px;
-  transition: background-color 0.2s ease;
+  margin-top: 10px;
+  transition: all 0.2s ease;
 }
 
 button:hover {
-  background-color: #0056b3;
+  background: #ffd700;
+  transform: translateY(-2px);
 }
 
-/* Dashboard layout */
-.dashboard {
-  max-width: 400px;
-  margin-top: 40px;
-}
-
+/* Dashboard container */
 .dashboard button {
-  width: 100%;
-  margin-bottom: 10px;
+  margin-top: 10px;
 }
