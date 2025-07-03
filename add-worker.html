@@ -1,20 +1,75 @@
-
 <!DOCTYPE html>
 <html>
 <head>
   <title>Add Worker</title>
-  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js"></script>
+  <meta charset="UTF-8" />
+  <link rel="stylesheet" href="style.css" />
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
 </head>
 <body>
-  <h1>Add New Worker</h1>
-  <input type="text" id="name" placeholder="Worker Name"><br><br>
-  <input type="text" id="role" placeholder="Role"><br><br>
-  <input type="number" id="dailyWage" placeholder="Daily Wage"><br><br>
-  <button onclick="addWorker()">Add Worker</button>
+  <div class="card">
+    <h2>Add Worker</h2>
 
-  <script src="js/firebase.js"></script>
-  <script src="worker.js"></script>
+    <input type="text" id="name" placeholder="Full Name" />
+
+    <select id="gender">
+      <option value="">Select Gender</option>
+      <option>Male</option>
+      <option>Female</option>
+      <option>Other</option>
+    </select>
+
+    <input type="text" id="village" placeholder="Village Name" />
+    <input type="number" id="salary" placeholder="Daily Salary (₹)" />
+
+    <button onclick="addWorker()">Add Worker</button>
+
+    <p id="msg" style="margin-top:10px;"></p>
+  </div>
+
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyC3aue5Fg1Rpqk3rzkjQiQTBe76U6RA7GM",
+      authDomain: "worker-management-50d6d.firebaseapp.com",
+      projectId: "worker-management-50d6d",
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+
+    function addWorker() {
+      const name = document.getElementById("name").value;
+      const gender = document.getElementById("gender").value;
+      const village = document.getElementById("village").value;
+      const salary = parseInt(document.getElementById("salary").value);
+      const msg = document.getElementById("msg");
+
+      if (!name || !gender || !village || !salary) {
+        msg.style.color = "red";
+        msg.innerText = "Please fill all fields.";
+        return;
+      }
+
+      db.collection("workers").add({
+        name,
+        gender,
+        village,
+        salary,
+        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+      })
+      .then(() => {
+        msg.style.color = "lightgreen";
+        msg.innerText = "✅ Worker added successfully!";
+        document.getElementById("name").value = "";
+        document.getElementById("gender").value = "";
+        document.getElementById("village").value = "";
+        document.getElementById("salary").value = "";
+      })
+      .catch((error) => {
+        msg.style.color = "red";
+        msg.innerText = "Error: " + error.message;
+      });
+    }
+  </script>
 </body>
 </html>
