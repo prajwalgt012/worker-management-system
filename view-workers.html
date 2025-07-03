@@ -1,15 +1,14 @@
-
 <!DOCTYPE html>
 <html>
 <head>
-  <title>View/Edit Workers</title>
+  <title>View & Edit Workers</title>
   <meta charset="UTF-8" />
   <link rel="stylesheet" href="style.css" />
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
 </head>
 <body>
-  <div class="card" style="max-width: 900px;">
+  <div class="card" style="max-width: 1000px;">
     <h2>👥 Workers List</h2>
     <div id="workersTable"></div>
   </div>
@@ -34,20 +33,35 @@
           </tr>`;
 
         snapshot.forEach(doc => {
-          const worker = doc.data();
+          const w = doc.data();
           html += `
-            <tr style="border-bottom: 1px solid #555;">
-              <td><input value="${worker.name}" onchange="updateWorker('${doc.id}', 'name', this.value)" /></td>
+            <tr id="row-${doc.id}">
               <td>
-                <select onchange="updateWorker('${doc.id}', 'gender', this.value)">
-                  <option ${worker.gender === 'Male' ? 'selected' : ''}>Male</option>
-                  <option ${worker.gender === 'Female' ? 'selected' : ''}>Female</option>
-                  <option ${worker.gender === 'Other' ? 'selected' : ''}>Other</option>
+                <span>${w.name}</span>
+                <input class="hidden" value="${w.name}" />
+              </td>
+              <td>
+                <span>${w.gender}</span>
+                <select class="hidden">
+                  <option ${w.gender === 'Male' ? 'selected' : ''}>Male</option>
+                  <option ${w.gender === 'Female' ? 'selected' : ''}>Female</option>
+                  <option ${w.gender === 'Other' ? 'selected' : ''}>Other</option>
                 </select>
               </td>
-              <td><input value="${worker.village}" onchange="updateWorker('${doc.id}', 'village', this.value)" /></td>
-              <td><input type="number" value="${worker.salary}" onchange="updateWorker('${doc.id}', 'salary', this.value)" /></td>
-              <td><button onclick="deleteWorker('${doc.id}')">🗑 Delete</button></td>
+              <td>
+                <span>${w.village}</span>
+                <input class="hidden" value="${w.village}" />
+              </td>
+              <td>
+                <span>${w.salary}</span>
+                <input type="number" class="hidden" value="${w.salary}" />
+              </td>
+              <td>
+                <button onclick="editRow('${doc.id}')">✏️ Edit</button>
+                <button class="hidden" onclick="saveRow('${doc.id}')">💾 Save</button>
+                <button class="hidden" onclick="cancelEdit('${doc.id}')">❌ Cancel</button>
+                <button onclick="deleteWorker('${doc.id}')">🗑 Delete</button>
+              </td>
             </tr>`;
         });
 
@@ -56,10 +70,33 @@
       });
     }
 
-    function updateWorker(id, field, value) {
-      db.collection("workers").doc(id).update({ [field]: value })
-        .then(() => console.log(`Updated ${field} to ${value}`))
-        .catch(err => alert("Update failed: " + err.message));
+    function editRow(id) {
+      const row = document.getElementById("row-" + id);
+      row.querySelectorAll("span").forEach(e => e.style.display = "none");
+      row.querySelectorAll("input, select").forEach(e => e.classList.remove("hidden"));
+      const buttons = row.querySelectorAll("button");
+      buttons[0].classList.add("hidden");  // Edit
+      buttons[1].classList.remove("hidden"); // Save
+      buttons[2].classList.remove("hidden"); // Cancel
+    }
+
+    function cancelEdit(id) {
+      loadWorkers();
+    }
+
+    function saveRow(id) {
+      const row = document.getElementById("row-" + id);
+      const inputs = row.querySelectorAll("input, select");
+      const [name, gender, village, salary] = [...inputs].map(e => e.value);
+
+      db.collection("workers").doc(id).update({
+        name, gender, village, salary: parseInt(salary)
+      })
+      .then(() => {
+        alert("✅ Worker updated successfully!");
+        loadWorkers();
+      })
+      .catch(err => alert("Update failed: " + err.message));
     }
 
     function deleteWorker(id) {
@@ -73,7 +110,6 @@
       }
     }
 
-    // Load data on page load
     loadWorkers();
   </script>
 </body>
