@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Weekly Salary Report (Fri–Thu)</title>
+  <meta charset="UTF-8" />
+  <link rel="stylesheet" href="style.css" />
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+</head>
+<body>
+  <div class="card" style="max-width: 1000px;">
+    <h2>💸 Weekly Salary Report (Friday to Thursday)</h2>
+
+    <label for="week" style="color: gold;">Select Friday (Start of Week):</label><br />
+    <input type="date" id="week" style="margin: 10px 0;" />
+    <button onclick="generateWeeklyReport()">📊 Generate</button>
+
+    <div id="reportTable" style="margin-top: 20px;"></div>
+  </div>
+
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyC3aue5Fg1Rpqk3rzkjQiQTBe76U6RA7GM",
+      authDomain: "worker-management-50d6d.firebaseapp.com",
+      projectId: "worker-management-50d6d"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+
+    function formatDate(date) {
+      return date.toISOString().split("T")[0];
+    }
+
+    async function generateWeeklyReport() {
+      const input = document.getElementById("week").value;
+      if (!input) {
+        alert("⚠️ Please select a Friday.");
+        return;
+      }
+
+      const startDate = new Date(input);
+      const weekday = startDate.getDay(); // 5 = Friday
+
+      if (weekday !== 5) {
+        alert("⚠️ Please select a FRIDAY as the start date.");
+        return;
+      }
+
+      const endDate = new Date(startDate);
+      endDate.setDate(startDate.getDate() + 6); // ends on Thursday
+
+      const start = formatDate(startDate);
+      const end = formatDate(endDate);
+
+      // Load all workers
+      const workersSnap = await db.collection("workers").get();
+      const workers = {};
+      workersSnap.forEach(doc => {
+        workers[doc.id] = { ...doc.data(), full: 0, half: 0, absent: 0 };
+      });
+
+      // Load attendance for the week
+      const attendanceSnap = await db.collection("attendance")
+        .where("date", ">=", start)
+        .where("date", "<=", end)
+        .get();
+
+      attendanceSnap.forEach(doc => {
+        const { workerId, status } = doc.data();
+        if (workers[workerId]) {
+          if (status === "full") workers[workerId].full++;
+          else if (status === "half") workers[workerId].half++;
+          else workers[workerId].absent++;
+        }
+      });
+
+      // Build report
+      let html = `<table style="width:100%; color:white; border-collapse: collapse;">
+        <tr style="background: gold; color: black;">
+          <th>Name</th><th>Gender</th><th>Village</th>
+          <th>Full</th><th>Half</th><th>Absent</th><th>Salary ₹</th>
+        </tr>`;
+
+      for (const id in workers) {
+        const w = workers[id];
+        let fullPay = 0, halfPay = 0;
+
+        if (w.gender === "Male") {
+          fullPay = 450;
+          halfPay = 300;
+        } else if (w.gender === "Female") {
+          fullPay = 350;
+          halfPay = 250;
+        } else {
+          fullPay = 400;
+          halfPay = 275;
+        }
+
+        const total = (w.full * fullPay) + (w.half * halfPay);
+
+        html += `
+          <tr>
+            <td>${w.name}</td>
+            <td>${w.gender}</td>
+            <td>${w.village}</td>
+            <td>${w.full}</td>
+            <td>${w.half}</td>
+            <td>${w.absent}</td>
+            <td><b>₹${total.toFixed(2)}</b></td>
+          </tr>`;
+      }
+
+      html += `</table>`;
+      document.getElementById("reportTable").innerHTML = html;
+    }
+  </script>
+</body>
+</html>
