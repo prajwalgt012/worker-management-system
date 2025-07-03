@@ -6,9 +6,9 @@
   font-family: 'Segoe UI', sans-serif;
 }
 
-/* Agriculture Background */
+/* Background image from your link */
 body {
-  background: url('https://images.unsplash.com/photo-1520207581500-7d631b1de8f9?auto=format&fit=crop&w=1350&q=80') no-repeat center center fixed;
+  background: url('https://t3.ftcdn.net/jpg/09/35/55/78/360_F_935557880_fHXCbtxFnPDOrFpAxJkhMYi2wpnuPHoZ.jpg') no-repeat center center fixed;
   background-size: cover;
   height: 100vh;
   display: flex;
@@ -16,7 +16,7 @@ body {
   align-items: center;
 }
 
-/* Dark overlay card */
+/* Centered card with luxury dark overlay */
 .card {
   background: rgba(0, 0, 0, 0.75);
   padding: 40px;
@@ -74,7 +74,7 @@ button:hover {
   transform: translateY(-2px);
 }
 
-/* Dashboard buttons */
+/* Dashboard button section */
 .dashboard button {
   margin-top: 10px;
   background: linear-gradient(to right, #4a00e0, #8e2de2);
