@@ -1,1 +1,80 @@
 
+<!DOCTYPE html>
+<html>
+<head>
+  <title>View/Edit Workers</title>
+  <meta charset="UTF-8" />
+  <link rel="stylesheet" href="style.css" />
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+</head>
+<body>
+  <div class="card" style="max-width: 900px;">
+    <h2>👥 Workers List</h2>
+    <div id="workersTable"></div>
+  </div>
+
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyC3aue5Fg1Rpqk3rzkjQiQTBe76U6RA7GM",
+      authDomain: "worker-management-50d6d.firebaseapp.com",
+      projectId: "worker-management-50d6d"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+
+    const tableDiv = document.getElementById("workersTable");
+
+    function loadWorkers() {
+      db.collection("workers").orderBy("createdAt", "desc").get().then(snapshot => {
+        let html = `<table style="width:100%; color:white; border-collapse: collapse;">
+          <tr style="background: gold; color: black;">
+            <th>Name</th><th>Gender</th><th>Village</th><th>Salary (₹)</th><th>Actions</th>
+          </tr>`;
+
+        snapshot.forEach(doc => {
+          const worker = doc.data();
+          html += `
+            <tr style="border-bottom: 1px solid #555;">
+              <td><input value="${worker.name}" onchange="updateWorker('${doc.id}', 'name', this.value)" /></td>
+              <td>
+                <select onchange="updateWorker('${doc.id}', 'gender', this.value)">
+                  <option ${worker.gender === 'Male' ? 'selected' : ''}>Male</option>
+                  <option ${worker.gender === 'Female' ? 'selected' : ''}>Female</option>
+                  <option ${worker.gender === 'Other' ? 'selected' : ''}>Other</option>
+                </select>
+              </td>
+              <td><input value="${worker.village}" onchange="updateWorker('${doc.id}', 'village', this.value)" /></td>
+              <td><input type="number" value="${worker.salary}" onchange="updateWorker('${doc.id}', 'salary', this.value)" /></td>
+              <td><button onclick="deleteWorker('${doc.id}')">🗑 Delete</button></td>
+            </tr>`;
+        });
+
+        html += `</table>`;
+        tableDiv.innerHTML = html;
+      });
+    }
+
+    function updateWorker(id, field, value) {
+      db.collection("workers").doc(id).update({ [field]: value })
+        .then(() => console.log(`Updated ${field} to ${value}`))
+        .catch(err => alert("Update failed: " + err.message));
+    }
+
+    function deleteWorker(id) {
+      if (confirm("Are you sure you want to delete this worker?")) {
+        db.collection("workers").doc(id).delete()
+          .then(() => {
+            alert("Deleted successfully");
+            loadWorkers();
+          })
+          .catch(err => alert("Delete failed: " + err.message));
+      }
+    }
+
+    // Load data on page load
+    loadWorkers();
+  </script>
+</body>
+</html>
