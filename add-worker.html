@@ -1,0 +1,20 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Add Worker</title>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js"></script>
+</head>
+<body>
+  <h1>Add New Worker</h1>
+  <input type="text" id="name" placeholder="Worker Name"><br><br>
+  <input type="text" id="role" placeholder="Role"><br><br>
+  <input type="number" id="dailyWage" placeholder="Daily Wage"><br><br>
+  <button onclick="addWorker()">Add Worker</button>
+
+  <script src="js/firebase.js"></script>
+  <script src="worker.js"></script>
+</body>
+</html>
