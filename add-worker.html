@@ -1,116 +1,75 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>View & Edit Workers</title>
+  <title>Add Worker</title>
   <meta charset="UTF-8" />
   <link rel="stylesheet" href="style.css" />
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
 </head>
 <body>
-  <div class="card" style="max-width: 1000px;">
-    <h2>👥 Workers List</h2>
-    <div id="workersTable"></div>
+  <div class="card">
+    <h2>Add Worker</h2>
+
+    <input type="text" id="name" placeholder="Full Name" />
+
+    <select id="gender">
+      <option value="">Select Gender</option>
+      <option>Male</option>
+      <option>Female</option>
+      <option>Other</option>
+    </select>
+
+    <input type="text" id="village" placeholder="Village Name" />
+    <input type="number" id="salary" placeholder="Daily Salary (₹)" />
+
+    <button onclick="addWorker()">Add Worker</button>
+
+    <p id="msg" style="margin-top:10px;"></p>
   </div>
 
   <script>
     const firebaseConfig = {
       apiKey: "AIzaSyC3aue5Fg1Rpqk3rzkjQiQTBe76U6RA7GM",
       authDomain: "worker-management-50d6d.firebaseapp.com",
-      projectId: "worker-management-50d6d"
+      projectId: "worker-management-50d6d",
     };
-
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
 
-    const tableDiv = document.getElementById("workersTable");
+    function addWorker() {
+      const name = document.getElementById("name").value;
+      const gender = document.getElementById("gender").value;
+      const village = document.getElementById("village").value;
+      const salary = parseInt(document.getElementById("salary").value);
+      const msg = document.getElementById("msg");
 
-    function loadWorkers() {
-      db.collection("workers").orderBy("createdAt", "desc").get().then(snapshot => {
-        let html = `<table style="width:100%; color:white; border-collapse: collapse;">
-          <tr style="background: gold; color: black;">
-            <th>Name</th><th>Gender</th><th>Village</th><th>Salary (₹)</th><th>Actions</th>
-          </tr>`;
+      if (!name || !gender || !village || !salary) {
+        msg.style.color = "red";
+        msg.innerText = "Please fill all fields.";
+        return;
+      }
 
-        snapshot.forEach(doc => {
-          const w = doc.data();
-          html += `
-            <tr id="row-${doc.id}">
-              <td>
-                <span>${w.name}</span>
-                <input class="hidden" value="${w.name}" />
-              </td>
-              <td>
-                <span>${w.gender}</span>
-                <select class="hidden">
-                  <option ${w.gender === 'Male' ? 'selected' : ''}>Male</option>
-                  <option ${w.gender === 'Female' ? 'selected' : ''}>Female</option>
-                  <option ${w.gender === 'Other' ? 'selected' : ''}>Other</option>
-                </select>
-              </td>
-              <td>
-                <span>${w.village}</span>
-                <input class="hidden" value="${w.village}" />
-              </td>
-              <td>
-                <span>${w.salary}</span>
-                <input type="number" class="hidden" value="${w.salary}" />
-              </td>
-              <td>
-                <button onclick="editRow('${doc.id}')">✏️ Edit</button>
-                <button class="hidden" onclick="saveRow('${doc.id}')">💾 Save</button>
-                <button class="hidden" onclick="cancelEdit('${doc.id}')">❌ Cancel</button>
-                <button onclick="deleteWorker('${doc.id}')">🗑 Delete</button>
-              </td>
-            </tr>`;
-        });
-
-        html += `</table>`;
-        tableDiv.innerHTML = html;
-      });
-    }
-
-    function editRow(id) {
-      const row = document.getElementById("row-" + id);
-      row.querySelectorAll("span").forEach(e => e.style.display = "none");
-      row.querySelectorAll("input, select").forEach(e => e.classList.remove("hidden"));
-      const buttons = row.querySelectorAll("button");
-      buttons[0].classList.add("hidden");  // Edit
-      buttons[1].classList.remove("hidden"); // Save
-      buttons[2].classList.remove("hidden"); // Cancel
-    }
-
-    function cancelEdit(id) {
-      loadWorkers();
-    }
-
-    function saveRow(id) {
-      const row = document.getElementById("row-" + id);
-      const inputs = row.querySelectorAll("input, select");
-      const [name, gender, village, salary] = [...inputs].map(e => e.value);
-
-      db.collection("workers").doc(id).update({
-        name, gender, village, salary: parseInt(salary)
+      db.collection("workers").add({
+        name,
+        gender,
+        village,
+        salary,
+        createdAt: firebase.firestore.FieldValue.serverTimestamp()
       })
       .then(() => {
-        alert("✅ Worker updated successfully!");
-        loadWorkers();
+        msg.style.color = "lightgreen";
+        msg.innerText = "✅ Worker added successfully!";
+        document.getElementById("name").value = "";
+        document.getElementById("gender").value = "";
+        document.getElementById("village").value = "";
+        document.getElementById("salary").value = "";
       })
-      .catch(err => alert("Update failed: " + err.message));
+      .catch((error) => {
+        msg.style.color = "red";
+        msg.innerText = "Error: " + error.message;
+      });
     }
-
-    function deleteWorker(id) {
-      if (confirm("Are you sure you want to delete this worker?")) {
-        db.collection("workers").doc(id).delete()
-          .then(() => {
-            alert("Deleted successfully");
-            loadWorkers();
-          })
-          .catch(err => alert("Delete failed: " + err.message));
-      }
-    }
-
-    loadWorkers();
   </script>
 </body>
 </html>
