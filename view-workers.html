@@ -3,16 +3,57 @@
 <head>
   <title>View & Edit Workers</title>
   <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 
-  <link rel="stylesheet" href="style.css" />
+  <style>
+    body {
+      background-color: white;
+      color: black;
+      font-family: Arial, sans-serif;
+      margin: 20px;
+    }
+    .card {
+      background-color: #fff;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      padding: 20px;
+      margin: auto;
+      max-width: 1000px;
+      border-radius: 10px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    th, td {
+      padding: 10px;
+      border: 1px solid #ccc;
+      text-align: center;
+    }
+    th {
+      background-color: gold;
+      color: black;
+    }
+    button {
+      margin: 2px;
+      padding: 5px 10px;
+      cursor: pointer;
+    }
+    .hidden {
+      display: none;
+    }
+  </style>
+
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 </head>
 <body>
-  <div class="card" style="max-width: 1000px;">
-    <h2>👥 Workers List</h2>
+  <div class="card">
+    <h2 style="text-align: center;">👥 Workers List</h2>
     <div id="workersTable"></div>
+    <div style="text-align: center; margin-top: 20px;">
+      <button onclick="downloadPDF()">⬇️ Download PDF</button>
+    </div>
   </div>
 
   <script>
@@ -29,8 +70,8 @@
 
     function loadWorkers() {
       db.collection("workers").orderBy("createdAt", "desc").get().then(snapshot => {
-        let html = `<table style="width:100%; color:white; border-collapse: collapse;">
-          <tr style="background: gold; color: black;">
+        let html = `<div id="reportContent"><table>
+          <tr>
             <th>Name</th><th>Gender</th><th>Village</th><th>Salary (₹)</th><th>Actions</th>
           </tr>`;
 
@@ -67,7 +108,7 @@
             </tr>`;
         });
 
-        html += `</table>`;
+        html += `</table></div>`;
         tableDiv.innerHTML = html;
       });
     }
@@ -77,9 +118,9 @@
       row.querySelectorAll("span").forEach(e => e.style.display = "none");
       row.querySelectorAll("input, select").forEach(e => e.classList.remove("hidden"));
       const buttons = row.querySelectorAll("button");
-      buttons[0].classList.add("hidden");  // Edit
-      buttons[1].classList.remove("hidden"); // Save
-      buttons[2].classList.remove("hidden"); // Cancel
+      buttons[0].classList.add("hidden");
+      buttons[1].classList.remove("hidden");
+      buttons[2].classList.remove("hidden");
     }
 
     function cancelEdit(id) {
@@ -110,6 +151,18 @@
           })
           .catch(err => alert("Delete failed: " + err.message));
       }
+    }
+
+    function downloadPDF() {
+      const element = document.getElementById("reportContent");
+      const opt = {
+        margin: 0.5,
+        filename: 'workers_list.pdf',
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 2 },
+        jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' }
+      };
+      html2pdf().set(opt).from(element).save();
     }
 
     loadWorkers();
