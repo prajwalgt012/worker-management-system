@@ -3,19 +3,24 @@
 <head>
   <title>Weekly Payments</title>
   <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <link rel="stylesheet" href="style.css" />
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
 </head>
 <body>
-  <div class="card" style="max-width: 1000px;">
+  <div class="card" style="max-width: 1000px; padding: 20px;">
     <h2>💸 Weekly Payments (Friday to Thursday)</h2>
 
     <label for="week" style="color: gold;">Select Friday (Start of Week):</label><br />
     <input type="date" id="week" style="margin: 10px 0;" />
     <button onclick="generatePayments()">📊 Generate Report</button>
+    <button onclick="downloadPDF()">📥 Download PDF</button>
 
-    <div id="paymentsTable" style="margin-top: 20px;"></div>
+    <!-- PDF Content Wrapper -->
+    <div id="pdfContent" style="margin-top: 20px;">
+      <div id="paymentsTable"></div>
+    </div>
   </div>
 
   <script>
@@ -71,7 +76,7 @@
       });
 
       // Build salary table
-      let html = `<table style="width:100%; color:white; border-collapse: collapse;">
+      let html = `<table style="width:100%; color:white; border-collapse: collapse; font-size: 16px;">
         <tr style="background: gold; color: black;">
           <th>Name</th><th>Gender</th><th>Village</th>
           <th>Full</th><th>Half</th><th>Absent</th><th>Total ₹</th>
@@ -109,6 +114,21 @@
       html += `</table>`;
       document.getElementById("paymentsTable").innerHTML = html;
     }
+
+    function downloadPDF() {
+      const element = document.getElementById('pdfContent');
+      const opt = {
+        margin: 0.3,
+        filename: 'Weekly_Payment_Report.pdf',
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 2 },
+        jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' }
+      };
+      html2pdf().set(opt).from(element).save();
+    }
   </script>
+
+  <!-- ✅ Load html2pdf.js from CDN -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 </body>
 </html>
