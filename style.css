@@ -6,7 +6,7 @@
   font-family: 'Segoe UI', sans-serif;
 }
 
-/* Background image from your link */
+/* Background image */
 body {
   background: url('https://t3.ftcdn.net/jpg/09/35/55/78/360_F_935557880_fHXCbtxFnPDOrFpAxJkhMYi2wpnuPHoZ.jpg') no-repeat center center fixed;
   background-size: cover;
@@ -14,9 +14,10 @@ body {
   display: flex;
   justify-content: center;
   align-items: center;
+  padding: 20px;
 }
 
-/* Centered card with luxury dark overlay */
+/* Centered card */
 .card {
   background: rgba(0, 0, 0, 0.75);
   padding: 40px;
@@ -84,6 +85,7 @@ button:hover {
 .dashboard button:hover {
   background: linear-gradient(to right, #5a00ff, #aa3fff);
 }
+
 .hidden {
   display: none;
 }
@@ -98,3 +100,28 @@ td input, td select {
   border-radius: 4px;
 }
 
+/* 📱 Mobile Responsive Adjustments */
+@media (max-width: 480px) {
+  body {
+    padding: 10px;
+    align-items: flex-start;
+  }
+
+  .card {
+    padding: 20px;
+    box-shadow: 0 0 10px rgba(255, 215, 0, 0.1);
+  }
+
+  h1, h2 {
+    font-size: 20px;
+  }
+
+  input, button {
+    font-size: 14px;
+    padding: 10px;
+  }
+
+  td input, td select {
+    font-size: 13px;
+  }
+}
