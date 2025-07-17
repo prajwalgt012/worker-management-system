@@ -7,17 +7,16 @@
   <style>
     body {
       font-family: Arial, sans-serif;
-      background-color: white;
-      color: black;
       padding: 20px;
+      background: #fff;
+      color: #000;
     }
     .card {
       max-width: 500px;
       margin: auto;
-      background: #fff;
+      background: #f9f9f9;
       padding: 20px;
       border-radius: 10px;
-      box-shadow: 0 4px 8px rgba(0,0,0,0.1);
     }
     label, select, input, button {
       display: block;
@@ -26,7 +25,7 @@
       font-size: 16px;
     }
     button {
-      background-color: black;
+      background: #e53935;
       color: white;
       border: none;
       padding: 12px;
@@ -34,7 +33,7 @@
       cursor: pointer;
     }
     button:hover {
-      background-color: #222;
+      background-color: #c62828;
     }
   </style>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
@@ -42,21 +41,20 @@
 </head>
 <body>
   <div class="card">
-    <h2>➖ Deduct Advance</h2>
+    <h2>💸 Deduct Advance</h2>
 
     <label for="workerSelect">Select Worker:</label>
     <select id="workerSelect">
-      <option value="">Loading...</option>
+      <option value="">-- Select Worker --</option>
     </select>
 
-    <label for="deductAmount">Amount to Deduct:</label>
+    <label for="deductAmount">Deduction Amount:</label>
     <input type="number" id="deductAmount" />
 
-    <label for="deductReason">Reason:</label>
-    <input type="text" id="deductReason" />
+    <label for="reason">Reason:</label>
+    <input type="text" id="reason" />
 
-    <button onclick="deductAdvance()">💸 Deduct</button>
-
+    <button onclick="deductAdvance()">➖ Deduct</button>
     <p id="status"></p>
   </div>
 
@@ -69,55 +67,55 @@
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
 
-    async function loadWorkers() {
-      const select = document.getElementById("workerSelect");
-      select.innerHTML = `<option value="">Select a worker</option>`;
+    const workerSelect = document.getElementById("workerSelect");
 
-      const snapshot = await db.collection("advances").get();
+    async function loadWorkers() {
+      const snapshot = await db.collection("workers").get();
       snapshot.forEach(doc => {
         const data = doc.data();
-        if (data.remainingBalance > 0 && data.workerName) {
-          const option = document.createElement("option");
-          option.value = doc.id;
-          option.textContent = `${data.workerName} (₹${data.remainingBalance})`;
-          select.appendChild(option);
-        }
+        const opt = document.createElement("option");
+        opt.value = doc.id;
+        opt.textContent = data.name;
+        workerSelect.appendChild(opt);
       });
     }
 
     async function deductAdvance() {
-      const workerId = document.getElementById("workerSelect").value;
+      const workerId = workerSelect.value;
       const amount = parseFloat(document.getElementById("deductAmount").value);
-      const reason = document.getElementById("deductReason").value;
-
+      const reason = document.getElementById("reason").value.trim();
       if (!workerId || isNaN(amount) || amount <= 0) {
-        document.getElementById("status").innerText = "⚠️ Please select a worker and valid amount.";
+        document.getElementById("status").innerText = "⚠️ Please enter valid details.";
         return;
       }
 
-      const ref = db.collection("advances").doc(workerId);
-      const doc = await ref.get();
-      if (!doc.exists) {
-        document.getElementById("status").innerText = "❌ Worker record not found.";
+      const docRef = db.collection("advances").doc(workerId);
+      const docSnap = await docRef.get();
+      if (!docSnap.exists) {
+        document.getElementById("status").innerText = "❌ No advance record found.";
         return;
       }
 
-      const data = doc.data();
-      data.remainingBalance -= amount;
-      if (data.remainingBalance < 0) data.remainingBalance = 0;
+      const data = docSnap.data();
+      const newBalance = data.remainingBalance - amount;
+      if (newBalance < 0) {
+        document.getElementById("status").innerText = "❌ Insufficient balance.";
+        return;
+      }
 
-      data.cutHistory = data.cutHistory || [];
-      data.cutHistory.push({
-        amount,
-        reason,
-        date: new Date().toISOString()
+      await docRef.update({
+        remainingBalance: newBalance,
+        cutHistory: firebase.firestore.FieldValue.arrayUnion({
+          amount,
+          reason,
+          type: "Deduct",
+          date: new Date()
+        })
       });
 
-      if (data.remainingBalance <= 0) data.status = "Cleared";
-
-      await ref.set(data);
-      document.getElementById("status").innerText = "✅ Deduction successful.";
-      loadWorkers(); // Refresh worker list
+      document.getElementById("status").innerText = "✅ Deduction successful!";
+      document.getElementById("deductAmount").value = "";
+      document.getElementById("reason").value = "";
     }
 
     loadWorkers();
