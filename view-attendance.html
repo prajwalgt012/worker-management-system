@@ -3,11 +3,13 @@
 <head>
   <title>📅 Attendance Report (Date Range)</title>
   <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 
   <link rel="stylesheet" href="style.css" />
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+  
   <style>
     body {
       background: #1b1b1b;
@@ -15,7 +17,6 @@
       color: white;
       padding: 30px;
     }
-
     .card {
       background: rgba(0, 0, 0, 0.8);
       padding: 30px;
@@ -24,24 +25,20 @@
       margin: auto;
       box-shadow: 0 0 20px rgba(255, 255, 255, 0.1);
     }
-
     label {
       font-weight: bold;
       color: gold;
     }
-
     table {
       width: 100%;
       border-collapse: collapse;
       margin-top: 20px;
     }
-
     th, td {
       padding: 12px;
       border: 1px solid #888;
       text-align: center;
     }
-
     th {
       background: gold;
       color: black;
@@ -58,8 +55,11 @@
     <input type="date" id="endDate" />
 
     <button onclick="loadAttendance()" style="margin-left: 20px;">🔍 View Report</button>
+    <button onclick="downloadPDF()" style="margin-top: 10px;">📄 Download PDF</button>
 
-    <div id="attendanceTable"></div>
+    <div id="pdfReport">
+      <div id="attendanceTable"></div>
+    </div>
   </div>
 
   <script>
@@ -81,14 +81,12 @@
       const endDate = new Date(end);
       if (startDate > endDate) return alert("❌ Start date must be before end date.");
 
-      // Load all workers
       const workersSnap = await db.collection("workers").get();
       const workers = {};
       workersSnap.forEach(doc => {
         workers[doc.id] = doc.data();
       });
 
-      // Load all attendance records in range
       const attendanceSnap = await db.collection("attendance")
         .where("date", ">=", start)
         .where("date", "<=", end)
@@ -121,6 +119,18 @@
 
       html += "</table>";
       document.getElementById("attendanceTable").innerHTML = html;
+    }
+
+    function downloadPDF() {
+      const element = document.getElementById("pdfReport");
+      const opt = {
+        margin:       0.5,
+        filename:     'Attendance-Report.pdf',
+        image:        { type: 'jpeg', quality: 0.98 },
+        html2canvas:  { scale: 2 },
+        jsPDF:        { unit: 'in', format: 'a4', orientation: 'portrait' }
+      };
+      html2pdf().set(opt).from(element).save();
     }
   </script>
 </body>
