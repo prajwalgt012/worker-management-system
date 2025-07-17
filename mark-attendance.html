@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>Mark Attendance</title>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Mark Attendance</title>
 
   <style>
     body {
@@ -18,24 +18,24 @@
       max-width: 950px;
       margin: auto;
       background: white;
-      border-radius: 8px;
+      border-radius: 10px;
       padding: 20px;
-      box-shadow: 0px 2px 6px rgba(0,0,0,0.2);
-      color: black;
+      box-shadow: 0px 2px 6px rgba(0,0,0,0.15);
     }
 
     h2 {
       text-align: center;
-      margin-bottom: 20px;
+      margin-bottom: 25px;
+      font-size: 24px;
     }
 
     input, select, button {
       width: 100%;
       padding: 10px;
-      margin: 5px 0 15px 0;
+      margin: 10px 0;
       font-size: 16px;
-      border: 1px solid #ccc;
       border-radius: 5px;
+      border: 1px solid #ccc;
       box-sizing: border-box;
     }
 
@@ -44,7 +44,7 @@
       color: black;
       font-weight: bold;
       cursor: pointer;
-      transition: background 0.3s;
+      transition: background 0.3s ease;
     }
 
     button:hover {
@@ -54,11 +54,11 @@
     table {
       width: 100%;
       border-collapse: collapse;
-      margin-top: 15px;
+      margin-top: 20px;
     }
 
     th, td {
-      padding: 10px;
+      padding: 12px;
       border: 1px solid #ccc;
       text-align: left;
     }
@@ -66,9 +66,14 @@
     th {
       background-color: gold;
       color: black;
+      font-size: 16px;
     }
 
-    @media screen and (max-width: 600px) {
+    @media screen and (max-width: 768px) {
+      .card {
+        padding: 15px;
+      }
+
       table, thead, tbody, th, td, tr {
         display: block;
         width: 100%;
@@ -81,6 +86,7 @@
       td {
         position: relative;
         padding-left: 50%;
+        text-align: left;
         border: none;
         border-bottom: 1px solid #ccc;
       }
@@ -88,10 +94,10 @@
       td:before {
         position: absolute;
         top: 10px;
-        left: 10px;
+        left: 15px;
         width: 45%;
-        white-space: nowrap;
         font-weight: bold;
+        white-space: nowrap;
       }
 
       td:nth-of-type(1):before { content: "Name"; }
@@ -109,13 +115,13 @@
   <div class="card">
     <h2>📅 Mark Attendance</h2>
 
-    <label for="date" style="font-weight: bold;">Select Date:</label>
+    <label for="date"><strong>Select Date:</strong></label>
     <input type="date" id="date" />
 
     <div id="attendanceList"></div>
 
     <button onclick="submitAttendance()">✅ Submit Attendance</button>
-    <p id="status" style="margin-top: 10px;"></p>
+    <p id="status" style="margin-top: 15px;"></p>
   </div>
 
   <script>
@@ -140,7 +146,7 @@
 
         snapshot.forEach(doc => {
           const w = doc.data();
-          attendance[doc.id] = "full"; // default value
+          attendance[doc.id] = "full";
           html += `
             <tr>
               <td>${w.name}</td>
@@ -176,7 +182,7 @@
         return db.collection("attendance").add({
           workerId,
           date: selectedDate,
-          status, // "full", "half", or "absent"
+          status,
           timestamp: firebase.firestore.FieldValue.serverTimestamp()
         });
       });
@@ -188,7 +194,7 @@
         })
         .catch(err => {
           status.style.color = "red";
-          status.innerText = "Error: " + err.message;
+          status.innerText = "❌ Error: " + err.message;
         });
     }
 
