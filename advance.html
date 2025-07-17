@@ -1,57 +1,17 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Advance Salary</title>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Manage Advance</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="stylesheet" href="style.css" />
   <style>
-    .card {
-      background: white;
-      color: black;
-      max-width: 600px;
-      margin: 20px auto;
-      padding: 20px;
-      border-radius: 12px;
-      box-shadow: 0 0 10px rgba(0,0,0,0.2);
-    }
-    input, select {
-      width: 100%;
-      margin-bottom: 12px;
-      padding: 10px;
-      border-radius: 8px;
-      border: 1px solid #ccc;
-    }
-    button {
-      background: gold;
-      color: black;
-      padding: 10px 20px;
-      border-radius: 8px;
-      border: none;
-      cursor: pointer;
-      width: 100%;
-    }
-    table {
-      width: 100%;
-      margin-top: 20px;
-      border-collapse: collapse;
-    }
-    th, td {
-      border: 1px solid #ccc;
-      padding: 8px;
-      text-align: left;
-    }
-    th {
-      background: #f4f4f4;
-    }
-    @media (max-width: 600px) {
-      .card {
-        margin: 10px;
-        padding: 15px;
-      }
-      table {
-        font-size: 14px;
-      }
+    .card { max-width: 800px; margin: auto; padding: 20px; background: white; color: black; border-radius: 10px; }
+    input, select, textarea { width: 100%; padding: 10px; margin: 5px 0; border-radius: 8px; border: 1px solid #ccc; }
+    button { padding: 10px 20px; border: none; background: green; color: white; border-radius: 8px; cursor: pointer; }
+    button:hover { background: darkgreen; }
+    @media(max-width: 600px) {
+      .card { padding: 10px; }
     }
   </style>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
@@ -59,111 +19,86 @@
 </head>
 <body>
   <div class="card">
-    <h2>💰 Advance Salary</h2>
+    <h2>💸 Worker Advance Management</h2>
 
     <select id="workerSelect">
       <option value="">Select Worker</option>
     </select>
 
-    <input type="number" id="advanceAmount" placeholder="Advance Amount (₹)" />
-    <input type="number" id="weeklyCut" placeholder="Weekly Cut Amount (₹)" />
-    <input type="text" id="reason" placeholder="Reason for Advance" />
+    <input type="number" id="advanceAmount" placeholder="Advance Amount ₹" />
+    <input type="number" id="weeklyCut" placeholder="Weekly Cut ₹" />
+    <textarea id="reason" placeholder="Reason for Advance"></textarea>
 
-    <button onclick="giveAdvance()">💾 Save Advance</button>
+    <button onclick="submitAdvance()">Submit Advance</button>
 
-    <p id="status"></p>
-
-    <table>
-      <thead>
-        <tr>
-          <th>Worker</th>
-          <th>Advance</th>
-          <th>Weekly Cut</th>
-          <th>Balance</th>
-          <th>Reason</th>
-        </tr>
-      </thead>
-      <tbody id="advanceTable"></tbody>
-    </table>
+    <p id="msg"></p>
   </div>
 
   <script>
-    // Firebase config
     const firebaseConfig = {
       apiKey: "AIzaSyC3aue5Fg1Rpqk3rzkjQiQTBe76U6RA7GM",
       authDomain: "worker-management-50d6d.firebaseapp.com",
       projectId: "worker-management-50d6d"
     };
+
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
 
-    const workerSelect = document.getElementById("workerSelect");
-    const tableBody = document.getElementById("advanceTable");
-    const status = document.getElementById("status");
+    const msg = document.getElementById("msg");
 
-    // Load workers in dropdown
-    db.collection("workers").orderBy("name").get().then(snapshot => {
-      snapshot.forEach(doc => {
-        const option = document.createElement("option");
-        option.value = doc.id;
-        option.textContent = doc.data().name + " (" + doc.data().village + ")";
-        workerSelect.appendChild(option);
-      });
-    });
-
-    function giveAdvance() {
-      const workerId = workerSelect.value;
-      const advance = parseFloat(document.getElementById("advanceAmount").value);
-      const cut = parseFloat(document.getElementById("weeklyCut").value);
-      const reason = document.getElementById("reason").value;
-
-      if (!workerId || isNaN(advance) || isNaN(cut) || !reason) {
-        status.style.color = "red";
-        status.innerText = "❗ Fill all fields properly.";
-        return;
-      }
-
-      const balance = advance;
-
-      db.collection("advance").add({
-        workerId,
-        advance,
-        cut,
-        balance,
-        reason,
-        createdAt: firebase.firestore.FieldValue.serverTimestamp()
-      }).then(() => {
-        status.style.color = "green";
-        status.innerText = "✅ Advance saved!";
-        loadTable();
-      }).catch(err => {
-        status.style.color = "red";
-        status.innerText = "❌ Error: " + err.message;
-      });
-    }
-
-    function loadTable() {
-      tableBody.innerHTML = "";
-      db.collection("advance").orderBy("createdAt", "desc").get().then(snapshot => {
-        snapshot.forEach(async doc => {
-          const data = doc.data();
-          const workerDoc = await db.collection("workers").doc(data.workerId).get();
-          const worker = workerDoc.data();
-
-          const row = document.createElement("tr");
-          row.innerHTML = `
-            <td>${worker.name}</td>
-            <td>₹${data.advance}</td>
-            <td>₹${data.cut}</td>
-            <td>₹${data.balance}</td>
-            <td>${data.reason}</td>
-          `;
-          tableBody.appendChild(row);
+    function loadWorkers() {
+      db.collection("workers").orderBy("name").get().then(snapshot => {
+        const select = document.getElementById("workerSelect");
+        snapshot.forEach(doc => {
+          const option = document.createElement("option");
+          option.value = doc.id;
+          option.textContent = doc.data().name;
+          select.appendChild(option);
         });
       });
     }
 
-    loadTable();
+    function submitAdvance() {
+      const workerId = document.getElementById("workerSelect").value;
+      const advanceAmount = parseFloat(document.getElementById("advanceAmount").value);
+      const weeklyCut = parseFloat(document.getElementById("weeklyCut").value);
+      const reason = document.getElementById("reason").value;
+
+      if (!workerId || !advanceAmount || !weeklyCut || !reason) {
+        msg.style.color = "red";
+        msg.innerText = "⚠️ Please fill all fields.";
+        return;
+      }
+
+      const workerName = document.getElementById("workerSelect").selectedOptions[0].text;
+
+      const record = {
+        workerId,
+        workerName,
+        advanceAmount,
+        weeklyCut,
+        remainingBalance: advanceAmount,
+        reason,
+        cutHistory: [],
+        status: "Active",
+        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+      };
+
+      db.collection("advances").add(record)
+        .then(() => {
+          msg.style.color = "green";
+          msg.innerText = "✅ Advance added!";
+          document.getElementById("advanceAmount").value = "";
+          document.getElementById("weeklyCut").value = "";
+          document.getElementById("reason").value = "";
+        })
+        .catch(err => {
+          msg.style.color = "red";
+          msg.innerText = "Error: " + err.message;
+        });
+    }
+
+    loadWorkers();
   </script>
 </body>
 </html>
