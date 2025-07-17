@@ -1,135 +1,126 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Deduct Advance</title>
-  <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-firestore-compat.js"></script>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <style>
     body {
       font-family: Arial, sans-serif;
-      background-color: #ffffff;
-      color: #000000;
-      margin: 0;
+      background-color: white;
+      color: black;
       padding: 20px;
     }
-    .container {
+    .card {
       max-width: 500px;
       margin: auto;
-      background: #f4f4f4;
+      background: #fff;
       padding: 20px;
       border-radius: 10px;
-      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+      box-shadow: 0 4px 8px rgba(0,0,0,0.1);
     }
-    h2 {
-      text-align: center;
-    }
-    select, input, button {
+    label, select, input, button {
+      display: block;
       width: 100%;
-      padding: 10px;
-      margin-top: 10px;
-      border: 1px solid #ccc;
-      border-radius: 5px;
+      margin: 10px 0;
       font-size: 16px;
     }
     button {
-      background-color: #000;
-      color: yellow;
+      background-color: black;
+      color: white;
+      border: none;
+      padding: 12px;
+      border-radius: 8px;
       cursor: pointer;
     }
     button:hover {
-      background-color: #333;
+      background-color: #222;
     }
   </style>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
 </head>
 <body>
-  <div class="container">
+  <div class="card">
     <h2>➖ Deduct Advance</h2>
-    <label for="worker">Select Worker:</label>
-    <select id="workerSelect"></select>
 
-    <label for="amount">Deduction Amount:</label>
-    <input type="number" id="deductAmount" placeholder="Enter amount to deduct">
+    <label for="workerSelect">Select Worker:</label>
+    <select id="workerSelect">
+      <option value="">Loading...</option>
+    </select>
 
-    <label for="reason">Reason:</label>
-    <input type="text" id="reason" placeholder="Enter reason (optional)">
+    <label for="deductAmount">Amount to Deduct:</label>
+    <input type="number" id="deductAmount" />
 
-    <button onclick="deductAdvance()">Submit Deduction</button>
+    <label for="deductReason">Reason:</label>
+    <input type="text" id="deductReason" />
+
+    <button onclick="deductAdvance()">💸 Deduct</button>
+
+    <p id="status"></p>
   </div>
 
   <script>
-    // Firebase config
     const firebaseConfig = {
-      apiKey: "AIzaSyBCe1s0A_P8av3lOKneRYxKILvAVUdYDWc",
-      authDomain: "worker-management-db94c.firebaseapp.com",
-      projectId: "worker-management-db94c",
-      storageBucket: "worker-management-db94c.appspot.com",
-      messagingSenderId: "888578699910",
-      appId: "1:888578699910:web:3c85fc4e86c08a2c640cbb"
+      apiKey: "AIzaSyC3aue5Fg1Rpqk3rzkjQiQTBe76U6RA7GM",
+      authDomain: "worker-management-50d6d.firebaseapp.com",
+      projectId: "worker-management-50d6d"
     };
-
-    // Init Firebase
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
 
-    // Load workers who have advance
-    const workerSelect = document.getElementById("workerSelect");
-    db.collection("advances").where("remainingBalance", ">", 0).get()
-      .then(snapshot => {
-        snapshot.forEach(doc => {
-          const data = doc.data();
+    async function loadWorkers() {
+      const select = document.getElementById("workerSelect");
+      select.innerHTML = `<option value="">Select a worker</option>`;
+
+      const snapshot = await db.collection("advances").get();
+      snapshot.forEach(doc => {
+        const data = doc.data();
+        if (data.remainingBalance > 0 && data.workerName) {
           const option = document.createElement("option");
           option.value = doc.id;
-          option.textContent = data.workerName + " (₹" + data.remainingBalance + ")";
-          workerSelect.appendChild(option);
-        });
-      });
-
-    function deductAdvance() {
-      const workerId = workerSelect.value;
-      const deductAmount = parseFloat(document.getElementById("deductAmount").value);
-      const reason = document.getElementById("reason").value || "Manual deduction";
-
-      if (!workerId || isNaN(deductAmount) || deductAmount <= 0) {
-        alert("Please enter valid deduction details.");
-        return;
-      }
-
-      const docRef = db.collection("advances").doc(workerId);
-
-      docRef.get().then(doc => {
-        if (doc.exists) {
-          const data = doc.data();
-          const newBalance = data.remainingBalance - deductAmount;
-
-          if (newBalance < 0) {
-            alert("Deduction exceeds remaining balance.");
-            return;
-          }
-
-          const history = data.cutHistory || [];
-          const now = new Date();
-          const dateStr = now.toLocaleDateString();
-          const dayStr = now.toLocaleDateString('en-IN', { weekday: 'long' });
-          
-          history.push({
-            date: dateStr,
-            day: dayStr,
-            amount: deductAmount,
-            reason: reason
-          });
-
-          docRef.update({
-            remainingBalance: newBalance,
-            cutHistory: history
-          }).then(() => {
-            alert("Deduction successful!");
-            location.reload();
-          });
+          option.textContent = `${data.workerName} (₹${data.remainingBalance})`;
+          select.appendChild(option);
         }
       });
     }
+
+    async function deductAdvance() {
+      const workerId = document.getElementById("workerSelect").value;
+      const amount = parseFloat(document.getElementById("deductAmount").value);
+      const reason = document.getElementById("deductReason").value;
+
+      if (!workerId || isNaN(amount) || amount <= 0) {
+        document.getElementById("status").innerText = "⚠️ Please select a worker and valid amount.";
+        return;
+      }
+
+      const ref = db.collection("advances").doc(workerId);
+      const doc = await ref.get();
+      if (!doc.exists) {
+        document.getElementById("status").innerText = "❌ Worker record not found.";
+        return;
+      }
+
+      const data = doc.data();
+      data.remainingBalance -= amount;
+      if (data.remainingBalance < 0) data.remainingBalance = 0;
+
+      data.cutHistory = data.cutHistory || [];
+      data.cutHistory.push({
+        amount,
+        reason,
+        date: new Date().toISOString()
+      });
+
+      if (data.remainingBalance <= 0) data.status = "Cleared";
+
+      await ref.set(data);
+      document.getElementById("status").innerText = "✅ Deduction successful.";
+      loadWorkers(); // Refresh worker list
+    }
+
+    loadWorkers();
   </script>
 </body>
 </html>
