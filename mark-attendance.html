@@ -3,17 +3,114 @@
 <head>
   <title>Mark Attendance</title>
   <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <link rel="stylesheet" href="style.css" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+
+  <style>
+    body {
+      margin: 0;
+      font-family: 'Segoe UI', sans-serif;
+      background-color: white;
+      color: black;
+      padding: 10px;
+    }
+
+    .card {
+      max-width: 950px;
+      margin: auto;
+      background: white;
+      border-radius: 8px;
+      padding: 20px;
+      box-shadow: 0px 2px 6px rgba(0,0,0,0.2);
+      color: black;
+    }
+
+    h2 {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+
+    input, select, button {
+      width: 100%;
+      padding: 10px;
+      margin: 5px 0 15px 0;
+      font-size: 16px;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+      box-sizing: border-box;
+    }
+
+    button {
+      background-color: gold;
+      color: black;
+      font-weight: bold;
+      cursor: pointer;
+      transition: background 0.3s;
+    }
+
+    button:hover {
+      background-color: #e6c200;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 15px;
+    }
+
+    th, td {
+      padding: 10px;
+      border: 1px solid #ccc;
+      text-align: left;
+    }
+
+    th {
+      background-color: gold;
+      color: black;
+    }
+
+    @media screen and (max-width: 600px) {
+      table, thead, tbody, th, td, tr {
+        display: block;
+        width: 100%;
+      }
+
+      th {
+        display: none;
+      }
+
+      td {
+        position: relative;
+        padding-left: 50%;
+        border: none;
+        border-bottom: 1px solid #ccc;
+      }
+
+      td:before {
+        position: absolute;
+        top: 10px;
+        left: 10px;
+        width: 45%;
+        white-space: nowrap;
+        font-weight: bold;
+      }
+
+      td:nth-of-type(1):before { content: "Name"; }
+      td:nth-of-type(2):before { content: "Village"; }
+      td:nth-of-type(3):before { content: "Attendance"; }
+    }
+  </style>
+
+  <!-- Firebase -->
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
 </head>
 <body>
-  <div class="card" style="max-width: 950px;">
+
+  <div class="card">
     <h2>📅 Mark Attendance</h2>
 
-    <label for="date" style="color: gold;">Select Date:</label><br />
-    <input type="date" id="date" style="margin: 10px 0;" />
+    <label for="date" style="font-weight: bold;">Select Date:</label>
+    <input type="date" id="date" />
 
     <div id="attendanceList"></div>
 
@@ -38,8 +135,8 @@
 
     function loadWorkers() {
       db.collection("workers").orderBy("name").get().then(snapshot => {
-        let html = "<table style='width:100%; color:white; border-collapse: collapse;'>";
-        html += "<tr style='background:gold; color:black;'><th>Name</th><th>Village</th><th>Attendance</th></tr>";
+        let html = "<table>";
+        html += "<tr><th>Name</th><th>Village</th><th>Attendance</th></tr>";
 
         snapshot.forEach(doc => {
           const w = doc.data();
@@ -86,7 +183,7 @@
 
       Promise.all(promises)
         .then(() => {
-          status.style.color = "lightgreen";
+          status.style.color = "green";
           status.innerText = "✅ Attendance submitted successfully!";
         })
         .catch(err => {
