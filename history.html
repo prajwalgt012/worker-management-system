@@ -4,65 +4,57 @@
   <title>Advance History</title>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <style>
     body {
       font-family: Arial, sans-serif;
-      background: white;
-      color: black;
       padding: 20px;
+      background-color: #fff;
+      color: #000;
     }
-
     h2 {
       text-align: center;
-      margin-bottom: 30px;
     }
-
-    .card {
-      background: #f9f9f9;
-      border-radius: 10px;
-      padding: 20px;
-      margin-bottom: 20px;
-      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    select, button {
+      padding: 10px;
+      margin: 10px 0;
+      width: 100%;
     }
-
-    .worker-name {
-      font-size: 20px;
-      font-weight: bold;
-      margin-bottom: 5px;
-    }
-
-    .summary {
-      margin-bottom: 10px;
-    }
-
-    .history-table {
+    table {
       width: 100%;
       border-collapse: collapse;
-      margin-top: 10px;
+      margin-top: 20px;
     }
-
-    .history-table th, .history-table td {
-      border: 1px solid #ccc;
+    th, td {
+      border: 1px solid #333;
       padding: 8px;
       text-align: left;
     }
-
-    @media screen and (max-width: 600px) {
-      .worker-name {
-        font-size: 18px;
-      }
-      .summary {
-        font-size: 14px;
-      }
+    th {
+      background: #f0f0f0;
+    }
+    .export-btn {
+      background: black;
+      color: yellow;
+      border: none;
+      padding: 10px;
+      cursor: pointer;
+      width: 100%;
     }
   </style>
-  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
 </head>
 <body>
+  <h2>📜 Advance History</h2>
 
-  <h2>📜 Advance History Report</h2>
-  <div id="historyContainer"></div>
+  <label for="workerSelect">Select Worker:</label>
+  <select id="workerSelect" onchange="loadHistory()">
+    <option value="">-- Select Worker --</option>
+  </select>
+
+  <div id="historyDisplay"></div>
+  <button class="export-btn" onclick="exportPDF()">⬇️ Export as PDF</button>
 
   <script>
     const firebaseConfig = {
@@ -70,68 +62,84 @@
       authDomain: "worker-management-50d6d.firebaseapp.com",
       projectId: "worker-management-50d6d"
     };
-
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
 
-    async function loadHistory() {
-      const advancesSnap = await db.collection("advances").get();
-      const container = document.getElementById("historyContainer");
-      container.innerHTML = "";
+    const workerSelect = document.getElementById("workerSelect");
+    const historyDisplay = document.getElementById("historyDisplay");
 
-      for (const doc of advancesSnap.docs) {
+    async function fetchWorkers() {
+      const snapshot = await db.collection("advances").get();
+      snapshot.forEach(doc => {
         const data = doc.data();
-
-        const card = document.createElement("div");
-        card.className = "card";
-
-        const name = document.createElement("div");
-        name.className = "worker-name";
-        name.textContent = `👤 ${data.workerName}`;
-
-        const summary = document.createElement("div");
-        summary.className = "summary";
-        const totalDeducted = (data.cutHistory || []).reduce((sum, item) => sum + item.amount, 0);
-        summary.innerHTML = `
-          💸 <strong>Advance Given:</strong> ₹${data.advanceAmount}<br>
-          ➖ <strong>Total Deducted:</strong> ₹${totalDeducted}<br>
-          💰 <strong>Remaining:</strong> ₹${data.remainingBalance}
-        `;
-
-        const table = document.createElement("table");
-        table.className = "history-table";
-
-        table.innerHTML = `
-          <thead>
-            <tr>
-              <th>Date</th>
-              <th>Day</th>
-              <th>Amount</th>
-              <th>Reason</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${
-              (data.cutHistory || []).map(entry => `
-                <tr>
-                  <td>${entry.date}</td>
-                  <td>${entry.day}</td>
-                  <td>₹${entry.amount}</td>
-                  <td>${entry.reason}</td>
-                </tr>
-              `).join("")
-            }
-          </tbody>
-        `;
-
-        card.appendChild(name);
-        card.appendChild(summary);
-        card.appendChild(table);
-        container.appendChild(card);
-      }
+        const option = document.createElement("option");
+        option.value = doc.id;
+        option.textContent = data.workerName || doc.id;
+        workerSelect.appendChild(option);
+      });
     }
 
-    loadHistory();
+    async function loadHistory() {
+      const workerId = workerSelect.value;
+      if (!workerId) return;
+
+      const doc = await db.collection("advances").doc(workerId).get();
+      if (!doc.exists) {
+        historyDisplay.innerHTML = "<p>No advance history found.</p>";
+        return;
+      }
+
+      const data = doc.data();
+      let html = `
+        <p><strong>Worker Name:</strong> ${data.workerName || workerId}</p>
+        <p><strong>Total Advance:</strong> ₹${data.advanceAmount}</p>
+        <p><strong>Total Deducted:</strong> ₹${data.advanceAmount - data.remainingBalance}</p>
+        <p><strong>Remaining Balance:</strong> ₹${data.remainingBalance}</p>
+        <h3>💳 Deduction History</h3>
+        <table>
+          <tr><th>Date</th><th>Amount</th><th>Reason</th></tr>
+      `;
+
+      (data.cutHistory || []).forEach(entry => {
+        const date = new Date(entry.date.seconds * 1000);
+        const formatted = date.toLocaleDateString() + " (" + date.toLocaleDateString('en-US', { weekday: 'long' }) + ")";
+        html += `<tr><td>${formatted}</td><td>₹${entry.amount}</td><td>${entry.reason}</td></tr>`;
+      });
+
+      html += `</table>`;
+      historyDisplay.innerHTML = html;
+    }
+
+    async function exportPDF() {
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF();
+      const workerId = workerSelect.value;
+      if (!workerId) return;
+
+      const snap = await db.collection("advances").doc(workerId).get();
+      if (!snap.exists) return;
+
+      const data = snap.data();
+
+      doc.setFontSize(14);
+      doc.text(`Advance History for ${data.workerName || workerId}`, 10, 10);
+      doc.text(`Total Advance: ₹${data.advanceAmount}`, 10, 20);
+      doc.text(`Total Deducted: ₹${data.advanceAmount - data.remainingBalance}`, 10, 30);
+      doc.text(`Remaining Balance: ₹${data.remainingBalance}`, 10, 40);
+      doc.text("Deduction History:", 10, 50);
+
+      let y = 60;
+      (data.cutHistory || []).forEach(entry => {
+        const d = new Date(entry.date.seconds * 1000);
+        const dateStr = d.toLocaleDateString() + " (" + d.toLocaleDateString('en-US', { weekday: 'long' }) + ")";
+        doc.text(`${dateStr} - ₹${entry.amount} (${entry.reason})`, 10, y);
+        y += 10;
+      });
+
+      doc.save(`advance-history-${data.workerName || workerId}.pdf`);
+    }
+
+    fetchWorkers();
   </script>
 </body>
 </html>
