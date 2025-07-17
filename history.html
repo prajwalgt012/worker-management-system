@@ -3,159 +3,214 @@
 <head>
   <title>Advance History</title>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    body { font-family: Arial, sans-serif; background: white; color: black; padding: 20px; }
+    .container { max-width: 1000px; margin: auto; }
+    h2 { text-align: center; }
+    select, button { padding: 10px; margin: 10px 5px; font-size: 16px; }
+    table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+    th, td { padding: 10px; border: 1px solid #ccc; text-align: center; }
+    th { background-color: #f0f0f0; }
+    .summary { margin-top: 20px; font-weight: bold; }
+    button { background: black; color: yellow; border: none; border-radius: 4px; cursor: pointer; }
+    .select-row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 10px; }
+  </style>
+  <!-- Firebase -->
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+  <!-- jsPDF -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      padding: 20px;
-      background-color: #fff;
-      color: #000;
-    }
-    h2 {
-      text-align: center;
-    }
-    select, button {
-      padding: 10px;
-      margin: 10px 0;
-      width: 100%;
-    }
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      margin-top: 20px;
-    }
-    th, td {
-      border: 1px solid #333;
-      padding: 8px;
-      text-align: left;
-    }
-    th {
-      background: #f0f0f0;
-    }
-    .export-btn {
-      background: black;
-      color: yellow;
-      border: none;
-      padding: 10px;
-      cursor: pointer;
-      width: 100%;
-    }
-  </style>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
 </head>
 <body>
-  <h2>📜 Advance History</h2>
+<div class="container">
+  <h2>📋 Worker Advance History</h2>
 
-  <label for="workerSelect">Select Worker:</label>
-  <select id="workerSelect" onchange="loadHistory()">
-    <option value="">-- Select Worker --</option>
-  </select>
+  <div class="select-row">
+    <label>View Mode:</label>
+    <select id="modeSelect">
+      <option value="individual">Individual Worker</option>
+      <option value="all">All Workers</option>
+    </select>
 
-  <div id="historyDisplay"></div>
-  <button class="export-btn" onclick="exportPDF()">⬇️ Export as PDF</button>
+    <select id="workerSelect">
+      <option value="">-- Select Worker --</option>
+    </select>
+  </div>
 
-  <script>
-    const firebaseConfig = {
-      apiKey: "AIzaSyC3aue5Fg1Rpqk3rzkjQiQTBe76U6RA7GM",
-      authDomain: "worker-management-50d6d.firebaseapp.com",
-      projectId: "worker-management-50d6d"
-    };
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.firestore();
+  <div id="summary" class="summary"></div>
 
-    const workerSelect = document.getElementById("workerSelect");
-    const historyDisplay = document.getElementById("historyDisplay");
+  <table id="historyTable">
+    <thead>
+      <tr>
+        <th>Worker</th>
+        <th>Date</th>
+        <th>Day</th>
+        <th>Type</th>
+        <th>Amount</th>
+        <th>Reason</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
 
-    async function fetchWorkers() {
-      const snapshot = await db.collection("advances").get();
-      snapshot.forEach(doc => {
-        const data = doc.data();
-        const option = document.createElement("option");
-        option.value = doc.id;
-        option.textContent = data.workerName || doc.id;
-        workerSelect.appendChild(option);
-      });
-    }
+  <button onclick="exportPDF()">📄 Export to PDF</button>
+</div>
 
-    async function loadHistory() {
-      const workerId = workerSelect.value;
-      if (!workerId) return;
+<script>
+  const firebaseConfig = {
+    apiKey: "AIzaSyC3aue5Fg1Rpqk3rzkjQiQTBe76U6RA7GM",
+    authDomain: "worker-management-50d6d.firebaseapp.com",
+    projectId: "worker-management-50d6d"
+  };
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.firestore();
 
-      const doc = await db.collection("advances").doc(workerId).get();
-      if (!doc.exists) {
-        historyDisplay.innerHTML = "<p>No advance history found.</p>";
-        return;
-      }
+  const workerSelect = document.getElementById("workerSelect");
+  const modeSelect = document.getElementById("modeSelect");
+  const tableBody = document.querySelector("#historyTable tbody");
+  const summary = document.getElementById("summary");
 
-      const data = doc.data();
-      let html = `
-        <p><strong>Worker Name:</strong> ${data.workerName || workerId}</p>
-        <p><strong>Total Advance:</strong> ₹${data.advanceAmount}</p>
-        <p><strong>Total Deducted:</strong> ₹${data.advanceAmount - data.remainingBalance}</p>
-        <p><strong>Remaining Balance:</strong> ₹${data.remainingBalance}</p>
-        <h3>💳 Full History</h3>
-        <table>
-          <tr><th>Date</th><th>Time</th><th>Day</th><th>Amount</th><th>Type</th><th>Reason</th></tr>
+  let workers = {};
+
+  async function loadWorkers() {
+    const snap = await db.collection("workers").get();
+    snap.forEach(doc => {
+      workers[doc.id] = doc.data().name;
+      const option = document.createElement("option");
+      option.value = doc.id;
+      option.textContent = doc.data().name;
+      workerSelect.appendChild(option);
+    });
+  }
+
+  async function loadIndividualHistory(workerId) {
+    tableBody.innerHTML = '';
+    summary.innerHTML = '';
+
+    const doc = await db.collection("advances").doc(workerId).get();
+    if (!doc.exists) return summary.textContent = "⚠️ No record found.";
+
+    const data = doc.data();
+    let totalAdvance = 0, totalDeduct = 0;
+
+    const history = data.cutHistory || [];
+    history.sort((a, b) => a.date?.seconds - b.date?.seconds);
+
+    history.forEach(entry => {
+      const dateObj = entry.date?.toDate?.() || new Date(entry.date);
+      const dateStr = dateObj.toLocaleDateString();
+      const dayStr = dateObj.toLocaleDateString('en-IN', { weekday: 'long' });
+
+      const row = document.createElement("tr");
+      row.innerHTML = `
+        <td>${data.workerName}</td>
+        <td>${dateStr}</td>
+        <td>${dayStr}</td>
+        <td>${entry.type}</td>
+        <td>₹${entry.amount}</td>
+        <td>${entry.reason}</td>
       `;
+      tableBody.appendChild(row);
 
-      (data.cutHistory || []).forEach(entry => {
-        const date = new Date(entry.date.seconds * 1000);
-        const fullDate = date.toLocaleDateString();
-        const fullTime = date.toLocaleTimeString();
-        const weekday = date.toLocaleDateString('en-US', { weekday: 'long' });
-        html += `
-          <tr>
-            <td>${fullDate}</td>
-            <td>${fullTime}</td>
-            <td>${weekday}</td>
-            <td>₹${entry.amount}</td>
-            <td>${entry.type || 'Deduct'}</td>
-            <td>${entry.reason}</td>
-          </tr>`;
+      if (entry.type === "Advance") totalAdvance += entry.amount;
+      else if (entry.type === "Deduct") totalDeduct += entry.amount;
+    });
+
+    summary.innerHTML = `
+      👷‍♂️ <b>Worker:</b> ${data.workerName}<br>
+      💰 <b>Total Advance:</b> ₹${totalAdvance}<br>
+      ➖ <b>Total Deducted:</b> ₹${totalDeduct}<br>
+      💼 <b>Remaining:</b> ₹${data.remainingBalance}
+    `;
+  }
+
+  async function loadAllHistory() {
+    tableBody.innerHTML = '';
+    summary.innerHTML = '';
+
+    let totalAdvance = 0, totalDeduct = 0;
+
+    const snap = await db.collection("advances").get();
+    const allHistory = [];
+
+    snap.forEach(doc => {
+      const data = doc.data();
+      const name = data.workerName;
+      const history = data.cutHistory || [];
+
+      history.forEach(entry => {
+        allHistory.push({ ...entry, name });
+        if (entry.type === "Advance") totalAdvance += entry.amount;
+        else totalDeduct += entry.amount;
       });
+    });
 
-      html += `</table>`;
-      historyDisplay.innerHTML = html;
+    allHistory.sort((a, b) => a.date?.seconds - b.date?.seconds);
+
+    allHistory.forEach(entry => {
+      const dateObj = entry.date?.toDate?.() || new Date(entry.date);
+      const dateStr = dateObj.toLocaleDateString();
+      const dayStr = dateObj.toLocaleDateString('en-IN', { weekday: 'long' });
+
+      const row = document.createElement("tr");
+      row.innerHTML = `
+        <td>${entry.name}</td>
+        <td>${dateStr}</td>
+        <td>${dayStr}</td>
+        <td>${entry.type}</td>
+        <td>₹${entry.amount}</td>
+        <td>${entry.reason}</td>
+      `;
+      tableBody.appendChild(row);
+    });
+
+    summary.innerHTML = `
+      👥 <b>All Workers</b><br>
+      💰 <b>Total Advance:</b> ₹${totalAdvance}<br>
+      ➖ <b>Total Deducted:</b> ₹${totalDeduct}<br>
+      💼 <b>Net Outstanding:</b> ₹${totalAdvance - totalDeduct}
+    `;
+  }
+
+  modeSelect.addEventListener("change", () => {
+    const mode = modeSelect.value;
+    if (mode === "all") {
+      workerSelect.style.display = "none";
+      loadAllHistory();
+    } else {
+      workerSelect.style.display = "inline";
+      if (workerSelect.value) loadIndividualHistory(workerSelect.value);
     }
+  });
 
-    async function exportPDF() {
-      const { jsPDF } = window.jspdf;
-      const doc = new jsPDF();
-      const workerId = workerSelect.value;
-      if (!workerId) return;
+  workerSelect.addEventListener("change", () => {
+    if (workerSelect.value) loadIndividualHistory(workerSelect.value);
+  });
 
-      const snap = await db.collection("advances").doc(workerId).get();
-      if (!snap.exists) return;
+  function exportPDF() {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+    doc.setFontSize(14);
+    doc.text("Advance Salary History", 20, 20);
+    doc.setFontSize(10);
+    doc.text(summary.innerText, 20, 30);
 
-      const data = snap.data();
+    const rows = [...tableBody.querySelectorAll("tr")].map(row =>
+      [...row.children].map(cell => cell.textContent)
+    );
 
-      doc.setFontSize(14);
-      doc.text(`Advance History for ${data.workerName || workerId}`, 10, 10);
-      doc.text(`Total Advance: ₹${data.advanceAmount}`, 10, 20);
-      doc.text(`Total Deducted: ₹${data.advanceAmount - data.remainingBalance}`, 10, 30);
-      doc.text(`Remaining Balance: ₹${data.remainingBalance}`, 10, 40);
-      doc.text("Full History:", 10, 50);
+    doc.autoTable({
+      head: [['Worker', 'Date', 'Day', 'Type', 'Amount', 'Reason']],
+      body: rows,
+      startY: 50
+    });
 
-      let y = 60;
-      (data.cutHistory || []).forEach(entry => {
-        const d = new Date(entry.date.seconds * 1000);
-        const dateStr = d.toLocaleDateString();
-        const timeStr = d.toLocaleTimeString();
-        const weekday = d.toLocaleDateString('en-US', { weekday: 'long' });
-        doc.text(`${dateStr} (${weekday}) ${timeStr} - ₹${entry.amount} - ${entry.type || 'Deduct'} (${entry.reason})`, 10, y);
-        y += 10;
-        if (y > 280) {
-          doc.addPage();
-          y = 10;
-        }
-      });
+    doc.save("advance-history.pdf");
+  }
 
-      doc.save(`advance-history-${data.workerName || workerId}.pdf`);
-    }
-
-    fetchWorkers();
-  </script>
+  loadWorkers();
+</script>
 </body>
 </html>
