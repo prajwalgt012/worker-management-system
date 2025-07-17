@@ -1,43 +1,59 @@
-<!-- advance.html -->
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Advance Management</title>
+  <title>Add Advance</title>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <link rel="stylesheet" href="style.css" />
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f4f4f4;
+      padding: 20px;
+    }
+    .card {
+      max-width: 400px;
+      margin: auto;
+      padding: 20px;
+      background: white;
+      border-radius: 10px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+    label, select, input, button {
+      width: 100%;
+      margin-bottom: 12px;
+      padding: 10px;
+      font-size: 16px;
+    }
+    button {
+      background-color: black;
+      color: yellow;
+      border: none;
+      cursor: pointer;
+    }
+    button:hover {
+      background-color: #222;
+    }
+  </style>
 </head>
 <body>
   <div class="card">
-    <h2>💰 Advance Management</h2>
+    <h2>➕ Add Advance</h2>
 
     <label for="workerName">Select Worker:</label>
-    <select id="workerName"></select>
+    <select id="workerName">
+      <option value="">Loading...</option>
+    </select>
 
     <label for="advanceAmount">Advance Amount:</label>
-    <input type="number" id="advanceAmount" />
+    <input type="number" id="advanceAmount" placeholder="Enter amount" />
 
     <label for="reason">Reason:</label>
-    <input type="text" id="reason" />
+    <input type="text" id="reason" placeholder="Reason for advance" />
 
-    <button onclick="giveAdvance()">➕ Give Advance</button>
-
-    <hr />
-
-    <h3>Manual Deduction</h3>
-    <label for="deductWorkerName">Select Worker:</label>
-    <select id="deductWorkerName"></select>
-
-    <label for="deductAmount">Deduct Amount:</label>
-    <input type="number" id="deductAmount" />
-
-    <label for="deductReason">Reason:</label>
-    <input type="text" id="deductReason" />
-
-    <button onclick="deductAmountFromAdvance()">➖ Deduct Amount</button>
-
+    <button onclick="giveAdvance()">Submit Advance</button>
     <p id="status"></p>
   </div>
 
@@ -51,32 +67,30 @@
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
 
-    async function loadWorkerNames() {
-      const workers = await db.collection("workers").get();
-      const nameSelect = document.getElementById("workerName");
-      const deductSelect = document.getElementById("deductWorkerName");
-
-      workers.forEach(doc => {
-        const name = doc.data().name;
-        const option1 = document.createElement("option");
-        option1.value = name;
-        option1.innerText = name;
-
-        const option2 = option1.cloneNode(true);
-
-        nameSelect.appendChild(option1);
-        deductSelect.appendChild(option2);
+    async function loadWorkers() {
+      const select = document.getElementById("workerName");
+      select.innerHTML = '<option value="">-- Select Worker --</option>';
+      const snapshot = await db.collection("workers").get();
+      snapshot.forEach(doc => {
+        const worker = doc.data();
+        const option = document.createElement("option");
+        option.value = doc.id;
+        option.textContent = worker.name;
+        select.appendChild(option);
       });
     }
 
-    loadWorkerNames();
-
     async function giveAdvance() {
-      const name = document.getElementById("workerName").value;
+      const workerId = document.getElementById("workerName").value;
       const amount = parseFloat(document.getElementById("advanceAmount").value);
       const reason = document.getElementById("reason").value;
 
-      const ref = db.collection("advances").doc(name);
+      if (!workerId || !amount || !reason) {
+        document.getElementById("status").innerText = "❌ All fields are required!";
+        return;
+      }
+
+      const ref = db.collection("advances").doc(workerId);
       const doc = await ref.get();
       let data = {
         advanceAmount: amount,
@@ -88,42 +102,20 @@
       };
 
       if (doc.exists) {
-        data = doc.data();
-        data.advanceAmount += amount;
-        data.remainingBalance += amount;
-        data.reason += ", " + reason;
+        const existing = doc.data();
+        data.advanceAmount = existing.advanceAmount + amount;
+        data.remainingBalance = existing.remainingBalance + amount;
+        data.reason = existing.reason + ", " + reason;
+        data.cutHistory = existing.cutHistory || [];
         data.status = "Active";
+        data.createdAt = existing.createdAt;
       }
 
       await ref.set(data);
       document.getElementById("status").innerText = "✅ Advance Recorded";
     }
 
-    async function deductAmountFromAdvance() {
-      const name = document.getElementById("deductWorkerName").value;
-      const amount = parseFloat(document.getElementById("deductAmount").value);
-      const reason = document.getElementById("deductReason").value;
-
-      const ref = db.collection("advances").doc(name);
-      const doc = await ref.get();
-
-      if (!doc.exists) {
-        document.getElementById("status").innerText = "❌ No advance found.";
-        return;
-      }
-
-      const data = doc.data();
-      data.remainingBalance -= amount;
-      data.cutHistory.push({ date: new Date(), amount, reason });
-
-      if (data.remainingBalance <= 0) {
-        data.status = "Cleared";
-        data.remainingBalance = 0;
-      }
-
-      await ref.set(data);
-      document.getElementById("status").innerText = "✅ Amount Deducted";
-    }
+    loadWorkers();
   </script>
 </body>
 </html>
