@@ -19,7 +19,7 @@
       border-radius: 10px;
       box-shadow: 0 4px 8px rgba(0,0,0,0.1);
     }
-    label, input, button {
+    label, select, input, button {
       display: block;
       width: 100%;
       margin: 10px 0;
@@ -45,13 +45,15 @@
     <h2>💰 Add Advance</h2>
 
     <label for="workerName">Worker Name:</label>
-    <input type="text" id="workerName" placeholder="e.g., Raju" />
+    <select id="workerName">
+      <option value="">-- Select Worker --</option>
+    </select>
 
     <label for="advanceAmount">Advance Amount:</label>
-    <input type="number" id="advanceAmount" />
+    <input type="number" id="advanceAmount" placeholder="Enter amount" />
 
     <label for="reason">Reason:</label>
-    <input type="text" id="reason" />
+    <input type="text" id="reason" placeholder="e.g., Medical emergency" />
 
     <button onclick="addAdvance()">✅ Add Advance</button>
 
@@ -64,11 +66,28 @@
       authDomain: "worker-management-50d6d.firebaseapp.com",
       projectId: "worker-management-50d6d"
     };
+
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
 
+    // Fetch worker list from "workers" collection
+    async function loadWorkers() {
+      const select = document.getElementById("workerName");
+      const snapshot = await db.collection("workers").get();
+
+      snapshot.forEach(doc => {
+        const name = doc.data().workerName || doc.data().name;
+        const option = document.createElement("option");
+        option.value = name;
+        option.textContent = name;
+        select.appendChild(option);
+      });
+    }
+
+    loadWorkers();
+
     async function addAdvance() {
-      const workerName = document.getElementById("workerName").value.trim();
+      const workerName = document.getElementById("workerName").value;
       const amount = parseFloat(document.getElementById("advanceAmount").value);
       const reason = document.getElementById("reason").value.trim();
 
@@ -87,8 +106,10 @@
         createdAt: new Date()
       };
 
-      const docRef = await db.collection("advances").add(data);
+      await db.collection("advances").add(data);
       document.getElementById("status").innerText = `✅ Advance added for ${workerName}`;
+
+      // Reset form
       document.getElementById("workerName").value = "";
       document.getElementById("advanceAmount").value = "";
       document.getElementById("reason").value = "";
