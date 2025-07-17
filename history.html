@@ -95,15 +95,25 @@
         <p><strong>Total Advance:</strong> ₹${data.advanceAmount}</p>
         <p><strong>Total Deducted:</strong> ₹${data.advanceAmount - data.remainingBalance}</p>
         <p><strong>Remaining Balance:</strong> ₹${data.remainingBalance}</p>
-        <h3>💳 Deduction History</h3>
+        <h3>💳 Full History</h3>
         <table>
-          <tr><th>Date</th><th>Amount</th><th>Reason</th></tr>
+          <tr><th>Date</th><th>Time</th><th>Day</th><th>Amount</th><th>Type</th><th>Reason</th></tr>
       `;
 
       (data.cutHistory || []).forEach(entry => {
         const date = new Date(entry.date.seconds * 1000);
-        const formatted = date.toLocaleDateString() + " (" + date.toLocaleDateString('en-US', { weekday: 'long' }) + ")";
-        html += `<tr><td>${formatted}</td><td>₹${entry.amount}</td><td>${entry.reason}</td></tr>`;
+        const fullDate = date.toLocaleDateString();
+        const fullTime = date.toLocaleTimeString();
+        const weekday = date.toLocaleDateString('en-US', { weekday: 'long' });
+        html += `
+          <tr>
+            <td>${fullDate}</td>
+            <td>${fullTime}</td>
+            <td>${weekday}</td>
+            <td>₹${entry.amount}</td>
+            <td>${entry.type || 'Deduct'}</td>
+            <td>${entry.reason}</td>
+          </tr>`;
       });
 
       html += `</table>`;
@@ -126,14 +136,20 @@
       doc.text(`Total Advance: ₹${data.advanceAmount}`, 10, 20);
       doc.text(`Total Deducted: ₹${data.advanceAmount - data.remainingBalance}`, 10, 30);
       doc.text(`Remaining Balance: ₹${data.remainingBalance}`, 10, 40);
-      doc.text("Deduction History:", 10, 50);
+      doc.text("Full History:", 10, 50);
 
       let y = 60;
       (data.cutHistory || []).forEach(entry => {
         const d = new Date(entry.date.seconds * 1000);
-        const dateStr = d.toLocaleDateString() + " (" + d.toLocaleDateString('en-US', { weekday: 'long' }) + ")";
-        doc.text(`${dateStr} - ₹${entry.amount} (${entry.reason})`, 10, y);
+        const dateStr = d.toLocaleDateString();
+        const timeStr = d.toLocaleTimeString();
+        const weekday = d.toLocaleDateString('en-US', { weekday: 'long' });
+        doc.text(`${dateStr} (${weekday}) ${timeStr} - ₹${entry.amount} - ${entry.type || 'Deduct'} (${entry.reason})`, 10, y);
         y += 10;
+        if (y > 280) {
+          doc.addPage();
+          y = 10;
+        }
       });
 
       doc.save(`advance-history-${data.workerName || workerId}.pdf`);
