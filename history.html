@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Advance History</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: white;
+      color: black;
+      padding: 20px;
+    }
+
+    h2 {
+      text-align: center;
+      margin-bottom: 30px;
+    }
+
+    .card {
+      background: #f9f9f9;
+      border-radius: 10px;
+      padding: 20px;
+      margin-bottom: 20px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+
+    .worker-name {
+      font-size: 20px;
+      font-weight: bold;
+      margin-bottom: 5px;
+    }
+
+    .summary {
+      margin-bottom: 10px;
+    }
+
+    .history-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+    }
+
+    .history-table th, .history-table td {
+      border: 1px solid #ccc;
+      padding: 8px;
+      text-align: left;
+    }
+
+    @media screen and (max-width: 600px) {
+      .worker-name {
+        font-size: 18px;
+      }
+      .summary {
+        font-size: 14px;
+      }
+    }
+  </style>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+</head>
+<body>
+
+  <h2>📜 Advance History Report</h2>
+  <div id="historyContainer"></div>
+
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyC3aue5Fg1Rpqk3rzkjQiQTBe76U6RA7GM",
+      authDomain: "worker-management-50d6d.firebaseapp.com",
+      projectId: "worker-management-50d6d"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+
+    async function loadHistory() {
+      const advancesSnap = await db.collection("advances").get();
+      const container = document.getElementById("historyContainer");
+      container.innerHTML = "";
+
+      for (const doc of advancesSnap.docs) {
+        const data = doc.data();
+
+        const card = document.createElement("div");
+        card.className = "card";
+
+        const name = document.createElement("div");
+        name.className = "worker-name";
+        name.textContent = `👤 ${data.workerName}`;
+
+        const summary = document.createElement("div");
+        summary.className = "summary";
+        const totalDeducted = (data.cutHistory || []).reduce((sum, item) => sum + item.amount, 0);
+        summary.innerHTML = `
+          💸 <strong>Advance Given:</strong> ₹${data.advanceAmount}<br>
+          ➖ <strong>Total Deducted:</strong> ₹${totalDeducted}<br>
+          💰 <strong>Remaining:</strong> ₹${data.remainingBalance}
+        `;
+
+        const table = document.createElement("table");
+        table.className = "history-table";
+
+        table.innerHTML = `
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Day</th>
+              <th>Amount</th>
+              <th>Reason</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${
+              (data.cutHistory || []).map(entry => `
+                <tr>
+                  <td>${entry.date}</td>
+                  <td>${entry.day}</td>
+                  <td>₹${entry.amount}</td>
+                  <td>${entry.reason}</td>
+                </tr>
+              `).join("")
+            }
+          </tbody>
+        `;
+
+        card.appendChild(name);
+        card.appendChild(summary);
+        card.appendChild(table);
+        container.appendChild(card);
+      }
+    }
+
+    loadHistory();
+  </script>
+</body>
+</html>
