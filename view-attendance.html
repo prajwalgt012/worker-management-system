@@ -9,57 +9,83 @@
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
-  
+
   <style>
     body {
-      background: #1b1b1b;
+      background: white;
       font-family: 'Segoe UI', sans-serif;
-      color: white;
+      color: black;
       padding: 30px;
+      text-align: center;
     }
+
     .card {
-      background: rgba(0, 0, 0, 0.8);
+      background: #ffffff;
       padding: 30px;
       border-radius: 16px;
       max-width: 1000px;
       margin: auto;
-      box-shadow: 0 0 20px rgba(255, 255, 255, 0.1);
+      box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
     }
+
     label {
       font-weight: bold;
-      color: gold;
+      color: black;
     }
+
+    input[type="date"] {
+      padding: 8px;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+    }
+
+    button {
+      padding: 10px 20px;
+      margin-top: 15px;
+      background-color: #ffcc00;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: bold;
+    }
+
+    button:hover {
+      background-color: #e6b800;
+    }
+
     table {
       width: 100%;
       border-collapse: collapse;
-      margin-top: 20px;
+      margin-top: 30px;
     }
+
     th, td {
       padding: 12px;
-      border: 1px solid #888;
+      border: 1px solid #aaa;
       text-align: center;
     }
+
     th {
-      background: gold;
+      background: #ffcc00;
       color: black;
     }
   </style>
 </head>
 <body>
-  <div class="card">
-    <h2>📊 Attendance Report (Start to End Date)</h2>
+  <div class="card" id="reportSection">
+    <h2>📊 Attendance Report (Date Range)</h2>
 
-    <label for="startDate">Start Date:</label>
-    <input type="date" id="startDate" />
-    <label for="endDate" style="margin-left: 20px;">End Date:</label>
-    <input type="date" id="endDate" />
-
-    <button onclick="loadAttendance()" style="margin-left: 20px;">🔍 View Report</button>
-    <button onclick="downloadPDF()" style="margin-top: 10px;">📄 Download PDF</button>
-
-    <div id="pdfReport">
-      <div id="attendanceTable"></div>
+    <div>
+      <label for="startDate">Start Date:</label>
+      <input type="date" id="startDate" />
+      <label for="endDate" style="margin-left: 20px;">End Date:</label>
+      <input type="date" id="endDate" />
     </div>
+
+    <button onclick="loadAttendance()">🔍 View Report</button>
+    <button onclick="downloadPDF()">📥 Download PDF</button>
+
+    <div id="attendanceTable"></div>
   </div>
 
   <script>
@@ -122,15 +148,17 @@
     }
 
     function downloadPDF() {
-      const element = document.getElementById("pdfReport");
-      const opt = {
-        margin:       0.5,
-        filename:     'Attendance-Report.pdf',
-        image:        { type: 'jpeg', quality: 0.98 },
-        html2canvas:  { scale: 2 },
-        jsPDF:        { unit: 'in', format: 'a4', orientation: 'portrait' }
-      };
-      html2pdf().set(opt).from(element).save();
+      const element = document.getElementById('reportSection');
+      html2pdf()
+        .set({
+          margin: 0.5,
+          filename: 'attendance-report.pdf',
+          image: { type: 'jpeg', quality: 0.98 },
+          html2canvas: { scale: 2 },
+          jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' }
+        })
+        .from(element)
+        .save();
     }
   </script>
 </body>
