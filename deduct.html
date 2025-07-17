@@ -70,20 +70,23 @@
     const workerSelect = document.getElementById("workerSelect");
 
     async function loadWorkers() {
-      const snapshot = await db.collection("workers").get();
-      snapshot.forEach(doc => {
+      const snapshot = await db.collection("advances").get();
+      for (const doc of snapshot.docs) {
         const data = doc.data();
-        const opt = document.createElement("option");
-        opt.value = doc.id;
-        opt.textContent = data.name;
-        workerSelect.appendChild(opt);
-      });
+        if (data.remainingBalance > 0) {
+          const opt = document.createElement("option");
+          opt.value = doc.id;
+          opt.textContent = `${data.workerName} (₹${data.remainingBalance})`;
+          workerSelect.appendChild(opt);
+        }
+      }
     }
 
     async function deductAdvance() {
       const workerId = workerSelect.value;
       const amount = parseFloat(document.getElementById("deductAmount").value);
       const reason = document.getElementById("reason").value.trim();
+
       if (!workerId || isNaN(amount) || amount <= 0) {
         document.getElementById("status").innerText = "⚠️ Please enter valid details.";
         return;
@@ -91,6 +94,7 @@
 
       const docRef = db.collection("advances").doc(workerId);
       const docSnap = await docRef.get();
+
       if (!docSnap.exists) {
         document.getElementById("status").innerText = "❌ No advance record found.";
         return;
@@ -98,6 +102,7 @@
 
       const data = docSnap.data();
       const newBalance = data.remainingBalance - amount;
+
       if (newBalance < 0) {
         document.getElementById("status").innerText = "❌ Insufficient balance.";
         return;
