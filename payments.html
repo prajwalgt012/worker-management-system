@@ -1,27 +1,27 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Weekly Payments</title>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Weekly Payment Report</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <link rel="stylesheet" href="style.css" />
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
 </head>
 <body>
-  <div class="card" style="max-width: 1000px; padding: 20px;">
-    <h2>💸 Weekly Payments (Friday to Thursday)</h2>
+  <div class="card">
+    <h2>📊 Weekly Payment Report</h2>
+    <label>Select Friday:</label>
+    <input type="date" id="week" />
+    <button onclick="generatePayments()">Generate</button>
+    <button onclick="downloadPDF()">Download PDF</button>
 
-    <label for="week" style="color: gold;">Select Friday (Start of Week):</label><br />
-    <input type="date" id="week" style="margin: 10px 0;" />
-    <button onclick="generatePayments()">📊 Generate Report</button>
-    <button onclick="downloadPDF()">📥 Download PDF</button>
-
-    <!-- PDF Content Wrapper -->
-    <div id="pdfContent" style="margin-top: 20px;">
-      <div id="paymentsTable"></div>
+    <div id="pdfContent" style="margin-top:20px;">
+      <div id="paymentsTable" style="overflow-x:auto;"></div>
     </div>
   </div>
+
+  <!-- html2pdf CDN -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 
   <script>
     const firebaseConfig = {
@@ -37,23 +37,19 @@
     }
 
     async function generatePayments() {
-      const input = document.getElementById("week").value;
-      if (!input) {
-        alert("⚠️ Please select a Friday.");
-        return;
+      const weekInput = document.getElementById("week").value;
+      if (!weekInput) return alert("Please select a Friday");
+
+      const start = new Date(weekInput);
+      if (start.getDay() !== 5) {
+        return alert("Start date must be a FRIDAY");
       }
 
-      const startDate = new Date(input);
-      if (startDate.getDay() !== 5) {
-        alert("⚠️ Please select a FRIDAY as the start date.");
-        return;
-      }
+      const end = new Date(start);
+      end.setDate(start.getDate() + 6);
 
-      const endDate = new Date(startDate);
-      endDate.setDate(startDate.getDate() + 6);
-
-      const start = formatDate(startDate);
-      const end = formatDate(endDate);
+      const startDate = formatDate(start);
+      const endDate = formatDate(end);
 
       const workersSnap = await db.collection("workers").get();
       const workers = {};
@@ -62,8 +58,8 @@
       });
 
       const attendanceSnap = await db.collection("attendance")
-        .where("date", ">=", start)
-        .where("date", "<=", end)
+        .where("date", ">=", startDate)
+        .where("date", "<=", endDate)
         .get();
 
       attendanceSnap.forEach(doc => {
@@ -75,12 +71,10 @@
         }
       });
 
-      // Build salary table
-      let html = `<table style="width:100%; color:white; border-collapse: collapse; font-size: 16px;">
-        <tr style="background: gold; color: black;">
-          <th>Name</th><th>Gender</th><th>Village</th>
-          <th>Full</th><th>Half</th><th>Absent</th><th>Total ₹</th>
-        </tr>`;
+      let html = `<table><thead><tr>
+        <th>Name</th><th>Gender</th><th>Village</th>
+        <th>Full</th><th>Half</th><th>Absent</th><th>Total ₹</th>
+      </tr></thead><tbody>`;
 
       for (const id in workers) {
         const w = workers[id];
@@ -92,43 +86,28 @@
         } else if (w.gender === "Female") {
           fullPay = 350;
           halfPay = 250;
-        } else {
-          fullPay = 400;
-          halfPay = 275;
         }
 
-        const total = (w.full * fullPay) + (w.half * halfPay);
-
-        html += `
-          <tr>
-            <td>${w.name}</td>
-            <td>${w.gender}</td>
-            <td>${w.village}</td>
-            <td>${w.full}</td>
-            <td>${w.half}</td>
-            <td>${w.absent}</td>
-            <td><b>₹${total.toFixed(2)}</b></td>
-          </tr>`;
+        const total = w.full * fullPay + w.half * halfPay;
+        html += `<tr>
+          <td>${w.name}</td>
+          <td>${w.gender}</td>
+          <td>${w.village}</td>
+          <td>${w.full}</td>
+          <td>${w.half}</td>
+          <td>${w.absent}</td>
+          <td><b>₹${total}</b></td>
+        </tr>`;
       }
 
-      html += `</table>`;
+      html += `</tbody></table>`;
       document.getElementById("paymentsTable").innerHTML = html;
     }
 
     function downloadPDF() {
-      const element = document.getElementById('pdfContent');
-      const opt = {
-        margin: 0.3,
-        filename: 'Weekly_Payment_Report.pdf',
-        image: { type: 'jpeg', quality: 0.98 },
-        html2canvas: { scale: 2 },
-        jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' }
-      };
-      html2pdf().set(opt).from(element).save();
+      const element = document.getElementById("pdfContent");
+      html2pdf().from(element).save("Weekly_Payment_Report.pdf");
     }
   </script>
-
-  <!-- ✅ Load html2pdf.js from CDN -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 </body>
 </html>
