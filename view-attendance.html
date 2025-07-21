@@ -26,7 +26,6 @@
     }
     label {
       font-weight: bold;
-      color: black;
     }
     input[type="date"] {
       padding: 8px;
@@ -59,6 +58,11 @@
       background: #ffcc00;
       color: black;
     }
+    #summary {
+      margin-top: 20px;
+      font-weight: bold;
+      font-size: 16px;
+    }
   </style>
 </head>
 <body>
@@ -72,6 +76,8 @@
     </div>
     <button onclick="loadAttendance()">🔍 View Report</button>
     <button onclick="downloadPDF()">📥 Download PDF</button>
+
+    <div id="summary"></div>
     <div id="attendanceTable"></div>
   </div>
 
@@ -87,7 +93,6 @@
     async function loadAttendance() {
       const start = document.getElementById("startDate").value;
       const end = document.getElementById("endDate").value;
-
       if (!start || !end) return alert("⚠️ Please select both start and end dates.");
 
       const startDate = new Date(start);
@@ -111,17 +116,26 @@
 
       let html = `<table>
         <tr>
-          <th>Date</th><th>Name</th><th>Village</th><th>Status</th>
+          <th>Date</th><th>Day</th><th>Name</th><th>Village</th><th>Status</th>
         </tr>`;
+
+      let full = 0, half = 0, absent = 0;
 
       records.forEach(record => {
         const worker = workers[record.workerId];
         const status = record.status || "absent";
         const emoji = status === "full" ? "✅ Full" :
                       status === "half" ? "🌓 Half" : "❌ Absent";
+        if (status === "full") full++;
+        else if (status === "half") half++;
+        else absent++;
+
+        const date = new Date(record.date);
+        const day = date.toLocaleDateString('en-US', { weekday: 'long' });
 
         html += `<tr>
           <td>${record.date}</td>
+          <td>${day}</td>
           <td>${worker?.name || '❓ Unknown'}</td>
           <td>${worker?.village || '-'}</td>
           <td>${emoji}</td>
@@ -130,6 +144,10 @@
 
       html += "</table>";
       document.getElementById("attendanceTable").innerHTML = html;
+      document.getElementById("summary").innerHTML = `
+        🔢 <b>Summary:</b><br/>
+        ✅ Full: ${full} | 🌓 Half: ${half} | ❌ Absent: ${absent}
+      `;
     }
 
     function downloadPDF() {
