@@ -1,63 +1,128 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>📋 Mark Attendance</title>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <link rel="stylesheet" href="style.css" />
-  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+  <title>Mark Attendance</title>
+
   <style>
     body {
-      font-family: Arial, sans-serif;
-      padding: 20px;
-      background-color: #fff;
-      color: #000;
+      margin: 0;
+      font-family: 'Segoe UI', sans-serif;
+      background-color: white;
+      color: black;
+      padding: 10px;
     }
+
+    .card {
+      max-width: 950px;
+      margin: auto;
+      background: white;
+      border-radius: 10px;
+      padding: 20px;
+      box-shadow: 0px 2px 6px rgba(0,0,0,0.15);
+    }
+
     h2 {
       text-align: center;
+      margin-bottom: 25px;
+      font-size: 24px;
     }
-    .worker {
-      margin-bottom: 15px;
+
+    input, select, button {
+      width: 100%;
       padding: 10px;
-      border-bottom: 1px solid #ddd;
-    }
-    label {
-      margin-right: 15px;
-    }
-    .status {
-      margin-top: 5px;
-    }
-    .submit-btn {
-      display: block;
-      margin: 30px auto;
-      padding: 12px 30px;
-      background-color: #000;
-      color: yellow;
-      border: none;
-      border-radius: 6px;
+      margin: 10px 0;
       font-size: 16px;
-      cursor: pointer;
-    }
-    .submit-btn:hover {
-      background-color: #222;
-    }
-    input[type="date"] {
-      padding: 5px;
-      margin-bottom: 20px;
       border-radius: 5px;
+      border: 1px solid #ccc;
+      box-sizing: border-box;
+    }
+
+    button {
+      background-color: gold;
+      color: black;
+      font-weight: bold;
+      cursor: pointer;
+      transition: background 0.3s ease;
+    }
+
+    button:hover {
+      background-color: #e6c200;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 20px;
+    }
+
+    th, td {
+      padding: 12px;
+      border: 1px solid #ccc;
+      text-align: left;
+    }
+
+    th {
+      background-color: gold;
+      color: black;
+      font-size: 16px;
+    }
+
+    @media screen and (max-width: 768px) {
+      .card {
+        padding: 15px;
+      }
+
+      table, thead, tbody, th, td, tr {
+        display: block;
+        width: 100%;
+      }
+
+      th {
+        display: none;
+      }
+
+      td {
+        position: relative;
+        padding-left: 50%;
+        text-align: left;
+        border: none;
+        border-bottom: 1px solid #ccc;
+      }
+
+      td:before {
+        position: absolute;
+        top: 10px;
+        left: 15px;
+        width: 45%;
+        font-weight: bold;
+        white-space: nowrap;
+      }
+
+      td:nth-of-type(1):before { content: "Name"; }
+      td:nth-of-type(2):before { content: "Village"; }
+      td:nth-of-type(3):before { content: "Attendance"; }
     }
   </style>
+
+  <!-- Firebase -->
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
 </head>
 <body>
-  <h2>📋 Mark Attendance</h2>
 
-  <label for="date">Select Date:</label>
-  <input type="date" id="attendanceDate" />
+  <div class="card">
+    <h2>📅 Mark Attendance</h2>
 
-  <div id="workerList"></div>
+    <label for="date"><strong>Select Date:</strong></label>
+    <input type="date" id="date" />
 
-  <button class="submit-btn" onclick="submitAttendance()">✅ Submit Attendance</button>
+    <div id="attendanceList"></div>
+
+    <button onclick="submitAttendance()">✅ Submit Attendance</button>
+    <p id="status" style="margin-top: 15px;"></p>
+  </div>
 
   <script>
     const firebaseConfig = {
@@ -65,60 +130,91 @@
       authDomain: "worker-management-50d6d.firebaseapp.com",
       projectId: "worker-management-50d6d"
     };
+
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
 
-    async function loadWorkers() {
-      const snapshot = await db.collection("workers").get();
-      const list = document.getElementById("workerList");
-      list.innerHTML = "";
+    const listDiv = document.getElementById("attendanceList");
+    const status = document.getElementById("status");
 
-      snapshot.forEach(doc => {
-        const worker = doc.data();
-        const div = document.createElement("div");
-        div.className = "worker";
-        div.innerHTML = `
-          <strong>${worker.name}</strong> (${worker.village})<br/>
-          <div class="status">
-            <label><input type="radio" name="status-${doc.id}" value="full" checked /> Full</label>
-            <label><input type="radio" name="status-${doc.id}" value="half" /> Half</label>
-            <label><input type="radio" name="status-${doc.id}" value="absent" /> Absent</label>
-          </div>
-        `;
-        div.dataset.workerId = doc.id;
-        list.appendChild(div);
+    let attendance = {}; // {workerId: "full" | "half" | "absent"}
+
+    function loadWorkers() {
+      db.collection("workers").orderBy("name").get().then(snapshot => {
+        let html = "<table>";
+        html += "<tr><th>Name</th><th>Village</th><th>Attendance</th></tr>";
+
+        snapshot.forEach(doc => {
+          const w = doc.data();
+          attendance[doc.id] = "full";
+          html += `
+            <tr>
+              <td>${w.name}</td>
+              <td>${w.village}</td>
+              <td>
+                <select onchange="mark('${doc.id}', this.value)">
+                  <option value="full" selected>✅ Full Day</option>
+                  <option value="half">🌓 Half Day</option>
+                  <option value="absent">❌ Absent</option>
+                </select>
+              </td>
+            </tr>`;
+        });
+
+        html += "</table>";
+        listDiv.innerHTML = html;
       });
     }
 
-    async function submitAttendance() {
-      const date = document.getElementById("attendanceDate").value;
-      if (!date) return alert("⚠️ Please select a date.");
-
-      const workers = document.querySelectorAll(".worker");
-
-      for (const workerDiv of workers) {
-        const workerId = workerDiv.dataset.workerId;
-        const status = document.querySelector(`input[name="status-${workerId}"]:checked`).value;
-
-        const existing = await db.collection("attendance")
-          .where("workerId", "==", workerId)
-          .where("date", "==", date)
-          .get();
-
-        if (!existing.empty) {
-          // Update existing entry
-          const docId = existing.docs[0].id;
-          await db.collection("attendance").doc(docId).update({ status });
-        } else {
-          // Create new entry
-          await db.collection("attendance").add({ workerId, date, status });
-        }
-      }
-
-      alert("✅ Attendance submitted successfully.");
+    function mark(id, val) {
+      attendance[id] = val;
     }
 
-    window.onload = loadWorkers;
+    function submitAttendance() {
+      const selectedDate = document.getElementById("date").value;
+      if (!selectedDate) {
+        status.style.color = "red";
+        status.innerText = "⚠️ Please select a date.";
+        return;
+      }
+
+      const promises = Object.entries(attendance).map(async ([workerId, attStatus]) => {
+        const query = await db.collection("attendance")
+          .where("workerId", "==", workerId)
+          .where("date", "==", selectedDate)
+          .limit(1)
+          .get();
+
+        if (!query.empty) {
+          // Update existing
+          const docId = query.docs[0].id;
+          return db.collection("attendance").doc(docId).update({
+            status: attStatus,
+            timestamp: firebase.firestore.FieldValue.serverTimestamp()
+          });
+        } else {
+          // Add new
+          return db.collection("attendance").add({
+            workerId,
+            date: selectedDate,
+            status: attStatus,
+            timestamp: firebase.firestore.FieldValue.serverTimestamp()
+          });
+        }
+      });
+
+      Promise.all(promises)
+        .then(() => {
+          status.style.color = "green";
+          status.innerText = "✅ Attendance saved/updated successfully!";
+        })
+        .catch(err => {
+          status.style.color = "red";
+          status.innerText = "❌ Error: " + err.message;
+        });
+    }
+
+    loadWorkers();
   </script>
 </body>
 </html>
