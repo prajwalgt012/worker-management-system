@@ -183,6 +183,9 @@
         <tbody>`;
 
       const summary = {};
+      let totalFull = 0;
+      let totalHalf = 0;
+      let totalAbsent = 0;
 
       records.forEach(record => {
         const worker = workers[record.workerId];
@@ -194,6 +197,10 @@
 
         if (!summary[day]) summary[day] = { full: 0, half: 0, absent: 0 };
         summary[day][status] += 1;
+
+        if (status === "full") totalFull++;
+        else if (status === "half") totalHalf++;
+        else totalAbsent++;
 
         html += `<tr>
           <td>${record.date}</td>
@@ -211,7 +218,13 @@
       for (const day in summary) {
         summaryHTML += `<li><b>${day}:</b> ✅ Full: ${summary[day].full}, 🌓 Half: ${summary[day].half}, ❌ Absent: ${summary[day].absent}</li>`;
       }
-      summaryHTML += "</ul>";
+      summaryHTML += `</ul><h4>📊 Grand Total:</h4>
+        <ul>
+          <li>✅ Total Full: ${totalFull}</li>
+          <li>🌓 Total Half: ${totalHalf}</li>
+          <li>❌ Total Absent: ${totalAbsent}</li>
+        </ul>`;
+
       document.getElementById("summarySection").innerHTML = summaryHTML;
     }
 
