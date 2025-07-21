@@ -26,6 +26,7 @@
     }
     label {
       font-weight: bold;
+      color: black;
     }
     input[type="date"] {
       padding: 8px;
@@ -58,15 +59,15 @@
       background: #ffcc00;
       color: black;
     }
-    #summary {
+    .summary {
       margin-top: 20px;
+      font-size: 18px;
       font-weight: bold;
-      font-size: 16px;
     }
   </style>
 </head>
 <body>
-  <div class="card" id="reportSection">
+  <div class="card">
     <h2>📊 Attendance Report (Date Range)</h2>
     <div>
       <label for="startDate">Start Date:</label>
@@ -76,8 +77,10 @@
     </div>
     <button onclick="loadAttendance()">🔍 View Report</button>
     <button onclick="downloadPDF()">📥 Download PDF</button>
+  </div>
 
-    <div id="summary"></div>
+  <div class="card" id="attendancePDFContent">
+    <div id="summarySection" class="summary"></div>
     <div id="attendanceTable"></div>
   </div>
 
@@ -90,11 +93,16 @@
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
 
+    function getDayName(dateStr) {
+      const options = { weekday: 'long' };
+      return new Date(dateStr).toLocaleDateString('en-IN', options);
+    }
+
     async function loadAttendance() {
       const start = document.getElementById("startDate").value;
       const end = document.getElementById("endDate").value;
-      if (!start || !end) return alert("⚠️ Please select both start and end dates.");
 
+      if (!start || !end) return alert("⚠️ Please select both start and end dates.");
       const startDate = new Date(start);
       const endDate = new Date(end);
       if (startDate > endDate) return alert("❌ Start date must be before end date.");
@@ -119,23 +127,21 @@
           <th>Date</th><th>Day</th><th>Name</th><th>Village</th><th>Status</th>
         </tr>`;
 
-      let full = 0, half = 0, absent = 0;
+      let fullCount = 0, halfCount = 0, absentCount = 0;
 
       records.forEach(record => {
         const worker = workers[record.workerId];
         const status = record.status || "absent";
         const emoji = status === "full" ? "✅ Full" :
                       status === "half" ? "🌓 Half" : "❌ Absent";
-        if (status === "full") full++;
-        else if (status === "half") half++;
-        else absent++;
 
-        const date = new Date(record.date);
-        const day = date.toLocaleDateString('en-US', { weekday: 'long' });
+        if (status === "full") fullCount++;
+        else if (status === "half") halfCount++;
+        else absentCount++;
 
         html += `<tr>
           <td>${record.date}</td>
-          <td>${day}</td>
+          <td>${getDayName(record.date)}</td>
           <td>${worker?.name || '❓ Unknown'}</td>
           <td>${worker?.village || '-'}</td>
           <td>${emoji}</td>
@@ -144,24 +150,23 @@
 
       html += "</table>";
       document.getElementById("attendanceTable").innerHTML = html;
-      document.getElementById("summary").innerHTML = `
-        🔢 <b>Summary:</b><br/>
-        ✅ Full: ${full} | 🌓 Half: ${half} | ❌ Absent: ${absent}
+
+      document.getElementById("summarySection").innerHTML = `
+        🔢 Summary for selected range:
+        ✅ Full: ${fullCount} &nbsp;&nbsp; 🌓 Half: ${halfCount} &nbsp;&nbsp; ❌ Absent: ${absentCount}
       `;
     }
 
     function downloadPDF() {
-      const element = document.getElementById('reportSection');
-      html2pdf()
-        .set({
-          margin: 0.5,
-          filename: 'attendance-report.pdf',
-          image: { type: 'jpeg', quality: 0.98 },
-          html2canvas: { scale: 2 },
-          jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' }
-        })
-        .from(element)
-        .save();
+      const element = document.getElementById("attendancePDFContent");
+      const opt = {
+        margin: 0.5,
+        filename: 'Attendance_Report.pdf',
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 2, scrollY: 0 },
+        jsPDF: { unit: 'in', format: 'a3', orientation: 'portrait' }
+      };
+      html2pdf().set(opt).from(element).save();
     }
   </script>
 </body>
