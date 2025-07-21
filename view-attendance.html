@@ -38,11 +38,13 @@
 
     label {
       font-weight: 600;
+      display: block;
+      margin-top: 10px;
     }
 
     input[type="date"] {
       padding: 8px;
-      margin: 5px;
+      margin: 5px 0;
       border-radius: 6px;
       border: 1px solid #ccc;
       width: 100%;
@@ -114,10 +116,6 @@
       table {
         font-size: 12px;
       }
-
-      th, td {
-        padding: 6px;
-      }
     }
   </style>
 </head>
@@ -159,11 +157,16 @@
       const end = document.getElementById("endDate").value;
       if (!start || !end) return alert("⚠️ Please select both start and end dates.");
 
-      const todayStr = new Date().toISOString().split("T")[0];
       const startDate = new Date(start);
       const endDate = new Date(end);
-      const todayDate = new Date(todayStr);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
       if (startDate > endDate) return alert("❌ Start date must be before end date.");
+      if (endDate > today) {
+        alert("⚠️ End date cannot be in the future. Using today's date.");
+        endDate.setTime(today.getTime());
+      }
 
       const workersSnap = await db.collection("workers").get();
       const workers = {};
@@ -173,18 +176,12 @@
 
       const attendanceSnap = await db.collection("attendance")
         .where("date", ">=", start)
-        .where("date", "<=", end)
+        .where("date", "<=", endDate.toISOString().split('T')[0])
         .orderBy("date")
         .get();
 
       const records = [];
-      attendanceSnap.forEach(doc => {
-        const data = doc.data();
-        const recordDate = new Date(data.date);
-        if (recordDate <= endDate) {
-          records.push(data);
-        }
-      });
+      attendanceSnap.forEach(doc => records.push(doc.data()));
 
       let html = `<table>
         <thead>
@@ -204,10 +201,13 @@
       let totalAbsent = 0;
 
       records.forEach(record => {
+        const recordDate = new Date(record.date);
+        recordDate.setHours(0, 0, 0, 0);
+        if (recordDate > today) return;
+
         const worker = workers[record.workerId];
         const status = record.status || "absent";
-        const date = new Date(record.date);
-        const day = date.toLocaleDateString('en-IN', { weekday: 'long' });
+        const day = recordDate.toLocaleDateString('en-IN', { weekday: 'long' });
         const emoji = status === "full" ? "✅ Full" :
                       status === "half" ? "🌓 Half" : "❌ Absent";
 
