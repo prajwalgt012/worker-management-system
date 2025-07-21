@@ -178,19 +178,35 @@
         return;
       }
 
-      const promises = Object.entries(attendance).map(([workerId, status]) => {
-        return db.collection("attendance").add({
-          workerId,
-          date: selectedDate,
-          status,
-          timestamp: firebase.firestore.FieldValue.serverTimestamp()
-        });
+      const promises = Object.entries(attendance).map(async ([workerId, attStatus]) => {
+        const query = await db.collection("attendance")
+          .where("workerId", "==", workerId)
+          .where("date", "==", selectedDate)
+          .limit(1)
+          .get();
+
+        if (!query.empty) {
+          // Update existing
+          const docId = query.docs[0].id;
+          return db.collection("attendance").doc(docId).update({
+            status: attStatus,
+            timestamp: firebase.firestore.FieldValue.serverTimestamp()
+          });
+        } else {
+          // Add new
+          return db.collection("attendance").add({
+            workerId,
+            date: selectedDate,
+            status: attStatus,
+            timestamp: firebase.firestore.FieldValue.serverTimestamp()
+          });
+        }
       });
 
       Promise.all(promises)
         .then(() => {
           status.style.color = "green";
-          status.innerText = "✅ Attendance submitted successfully!";
+          status.innerText = "✅ Attendance saved/updated successfully!";
         })
         .catch(err => {
           status.style.color = "red";
