@@ -4,12 +4,10 @@
   <title>📅 Attendance Report (Date Range)</title>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-
   <link rel="stylesheet" href="style.css" />
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
-
   <style>
     body {
       background: white;
@@ -18,7 +16,6 @@
       padding: 30px;
       text-align: center;
     }
-
     .card {
       background: #ffffff;
       padding: 30px;
@@ -27,18 +24,15 @@
       margin: auto;
       box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
     }
-
     label {
       font-weight: bold;
       color: black;
     }
-
     input[type="date"] {
       padding: 8px;
       border-radius: 6px;
       border: 1px solid #ccc;
     }
-
     button {
       padding: 10px 20px;
       margin-top: 15px;
@@ -48,23 +42,19 @@
       cursor: pointer;
       font-weight: bold;
     }
-
     button:hover {
       background-color: #e6b800;
     }
-
     table {
       width: 100%;
       border-collapse: collapse;
       margin-top: 30px;
     }
-
     th, td {
       padding: 12px;
       border: 1px solid #aaa;
       text-align: center;
     }
-
     th {
       background: #ffcc00;
       color: black;
@@ -74,17 +64,14 @@
 <body>
   <div class="card" id="reportSection">
     <h2>📊 Attendance Report (Date Range)</h2>
-
     <div>
       <label for="startDate">Start Date:</label>
       <input type="date" id="startDate" />
       <label for="endDate" style="margin-left: 20px;">End Date:</label>
       <input type="date" id="endDate" />
     </div>
-
     <button onclick="loadAttendance()">🔍 View Report</button>
     <button onclick="downloadPDF()">📥 Download PDF</button>
-
     <div id="attendanceTable"></div>
   </div>
 
@@ -120,9 +107,7 @@
         .get();
 
       const records = [];
-      attendanceSnap.forEach(doc => {
-        records.push(doc.data());
-      });
+      attendanceSnap.forEach(doc => records.push(doc.data()));
 
       let html = `<table>
         <tr>
