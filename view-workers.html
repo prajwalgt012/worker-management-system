@@ -1,87 +1,68 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>View & Edit Workers</title>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-
+  <title>View Workers</title>
   <style>
     body {
-      background-color: white;
-      color: black;
-      font-family: Arial, sans-serif;
       margin: 10px;
+      font-family: Arial, sans-serif;
+      background-color: #f9f9f9;
+      color: #333;
     }
     .card {
-      background-color: #fff;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      background: #fff;
       padding: 15px;
-      margin: auto;
-      max-width: 1000px;
-      border-radius: 10px;
-    }
-    table {
-      width: 100%;
-      border-collapse: collapse;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      border-radius: 8px;
+      max-width: 100%;
       overflow-x: auto;
     }
-    th, td {
-      padding: 8px;
-      border: 1px solid #ccc;
+    h2 {
       text-align: center;
-      font-size: 14px;
+      color: #444;
+    }
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      min-width: 600px;
+    }
+    th, td {
+      padding: 10px;
+      text-align: center;
+      border: 1px solid #ddd;
     }
     th {
-      background-color: gold;
+      background-color: #ffd700;
       color: black;
     }
     button {
+      padding: 6px 10px;
       margin: 2px;
-      padding: 5px 8px;
       cursor: pointer;
+      font-size: 14px;
     }
     .hidden {
       display: none;
     }
-    @media screen and (max-width: 768px) {
-      table, thead, tbody, th, td, tr {
-        display: block;
+    @media (max-width: 600px) {
+      table, th, td {
+        font-size: 12px;
+        padding: 8px;
       }
-      th {
-        display: none;
-      }
-      td {
-        position: relative;
-        padding-left: 50%;
-        border: none;
-        border-bottom: 1px solid #ccc;
-      }
-      td:before {
-        position: absolute;
-        top: 8px;
-        left: 8px;
-        width: 45%;
-        white-space: nowrap;
-        font-weight: bold;
-      }
-      td:nth-of-type(1):before { content: "Name"; }
-      td:nth-of-type(2):before { content: "Gender"; }
-      td:nth-of-type(3):before { content: "Village"; }
-      td:nth-of-type(4):before { content: "Salary"; }
-      td:nth-of-type(5):before { content: "Actions"; }
     }
   </style>
 
+  <!-- Firebase and PDF libraries -->
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 </head>
 <body>
   <div class="card">
-    <h2 style="text-align: center;">👥 Workers List</h2>
-    <div id="reportContent">
-      <div id="workersTable"></div>
-    </div>
+    <h2>👥 Workers List</h2>
+    <div id="workersTable"></div>
     <div style="text-align: center; margin-top: 20px;">
       <button onclick="downloadPDF()">⬇️ Download PDF</button>
     </div>
@@ -99,11 +80,15 @@
     const tableDiv = document.getElementById("workersTable");
 
     function loadWorkers() {
-      db.collection("workers").orderBy("createdAt", "desc").get().then(snapshot => {
-        let html = `<table><thead>
+      db.collection("workers").orderBy("name").get().then(snapshot => {
+        let html = `<div id="reportContent"><table>
           <tr>
-            <th>Name</th><th>Gender</th><th>Village</th><th>Salary (₹)</th><th>Actions</th>
-          </tr></thead><tbody>`;
+            <th>Name</th>
+            <th>Gender</th>
+            <th>Village</th>
+            <th>Salary (₹)</th>
+            <th>Actions</th>
+          </tr>`;
 
         snapshot.forEach(doc => {
           const w = doc.data();
@@ -138,7 +123,7 @@
             </tr>`;
         });
 
-        html += `</tbody></table>`;
+        html += `</table></div>`;
         tableDiv.innerHTML = html;
       });
     }
@@ -148,9 +133,9 @@
       row.querySelectorAll("span").forEach(e => e.style.display = "none");
       row.querySelectorAll("input, select").forEach(e => e.classList.remove("hidden"));
       const buttons = row.querySelectorAll("button");
-      buttons[0].classList.add("hidden");
-      buttons[1].classList.remove("hidden");
-      buttons[2].classList.remove("hidden");
+      buttons[0].classList.add("hidden"); // edit
+      buttons[1].classList.remove("hidden"); // save
+      buttons[2].classList.remove("hidden"); // cancel
     }
 
     function cancelEdit(id) {
@@ -166,17 +151,17 @@
         name, gender, village, salary: parseInt(salary)
       })
       .then(() => {
-        alert("✅ Worker updated successfully!");
+        alert("✅ Worker updated");
         loadWorkers();
       })
       .catch(err => alert("Update failed: " + err.message));
     }
 
     function deleteWorker(id) {
-      if (confirm("Are you sure you want to delete this worker?")) {
+      if (confirm("Delete this worker?")) {
         db.collection("workers").doc(id).delete()
           .then(() => {
-            alert("Deleted successfully");
+            alert("🗑 Deleted");
             loadWorkers();
           })
           .catch(err => alert("Delete failed: " + err.message));
@@ -186,12 +171,11 @@
     function downloadPDF() {
       const element = document.getElementById("reportContent");
       const opt = {
-        margin: 0.2,
+        margin: 0.5,
         filename: 'workers_list.pdf',
         image: { type: 'jpeg', quality: 0.98 },
         html2canvas: { scale: 2 },
-        jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' },
-        pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
+        jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' }
       };
       html2pdf().set(opt).from(element).save();
     }
