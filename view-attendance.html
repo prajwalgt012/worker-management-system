@@ -9,9 +9,7 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 
   <style>
-    * {
-      box-sizing: border-box;
-    }
+    * { box-sizing: border-box; }
     body {
       font-family: 'Segoe UI', sans-serif;
       margin: 0;
@@ -83,9 +81,7 @@
       background-color: #ffcc00;
     }
     @media (max-width: 600px) {
-      h2 {
-        font-size: 1.2rem;
-      }
+      h2 { font-size: 1.2rem; }
       .button-group {
         display: flex;
         flex-direction: column;
@@ -123,7 +119,6 @@
   </div>
 
   <script>
-    // Firebase config
     const firebaseConfig = {
       apiKey: "AIzaSyC3aue5Fg1Rpqk3rzkjQiQTBe76U6RA7GM",
       authDomain: "worker-management-50d6d.firebaseapp.com",
@@ -132,7 +127,6 @@
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
 
-    // Prevent selecting future dates
     const today = new Date().toISOString().split("T")[0];
     document.getElementById("startDate").setAttribute("max", today);
     document.getElementById("endDate").setAttribute("max", today);
@@ -144,8 +138,6 @@
 
       const startDate = new Date(start);
       const endDate = new Date(end);
-      const now = new Date();
-
       if (startDate > endDate) return alert("❌ Start date must be before end date.");
 
       const workersSnap = await db.collection("workers").get();
@@ -163,11 +155,16 @@
       const records = [];
       attendanceSnap.forEach(doc => {
         const data = doc.data();
-        const recordDate = new Date(data.date);
-        if (recordDate <= now) {
+        if (data.status) {  // Only if status exists (full, half, absent)
           records.push(data);
         }
       });
+
+      if (records.length === 0) {
+        document.getElementById("attendanceTable").innerHTML = `<p style="text-align:center; color:gray;">📭 No attendance data found for the selected range.</p>`;
+        document.getElementById("summarySection").innerHTML = '';
+        return;
+      }
 
       let html = `<table>
         <thead>
