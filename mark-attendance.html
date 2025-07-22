@@ -146,16 +146,16 @@
 
         snapshot.forEach(doc => {
           const w = doc.data();
-          attendance[doc.id] = "absent";
+          attendance[doc.id] = "absent"; // Default to absent
           html += `
             <tr>
               <td>${w.name}</td>
               <td>${w.village}</td>
               <td>
                 <select onchange="mark('${doc.id}', this.value)">
-                  <option value="full" selected>✅ Full Day</option>
+                  <option value="full">✅ Full Day</option>
                   <option value="half">🌓 Half Day</option>
-                  <option value="absent">❌ Absent</option>
+                  <option value="absent" selected>❌ Absent</option>
                 </select>
               </td>
             </tr>`;
@@ -172,9 +172,17 @@
 
     function submitAttendance() {
       const selectedDate = document.getElementById("date").value;
+
       if (!selectedDate) {
         status.style.color = "red";
         status.innerText = "⚠️ Please select a date.";
+        return;
+      }
+
+      const today = new Date().toISOString().split('T')[0];
+      if (selectedDate > today) {
+        status.style.color = "red";
+        status.innerText = "⚠️ Cannot mark attendance for future dates.";
         return;
       }
 
@@ -186,14 +194,12 @@
           .get();
 
         if (!query.empty) {
-          // Update existing
           const docId = query.docs[0].id;
           return db.collection("attendance").doc(docId).update({
             status: attStatus,
             timestamp: firebase.firestore.FieldValue.serverTimestamp()
           });
         } else {
-          // Add new
           return db.collection("attendance").add({
             workerId,
             date: selectedDate,
