@@ -146,7 +146,7 @@
 
         snapshot.forEach(doc => {
           const w = doc.data();
-          attendance[doc.id] = "full";
+          attendance[doc.id] = "absent";
           html += `
             <tr>
               <td>${w.name}</td>
