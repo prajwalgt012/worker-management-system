@@ -10,12 +10,12 @@
       background-color: white;
       color: black;
       font-family: Arial, sans-serif;
-      margin: 20px;
+      margin: 10px;
     }
     .card {
       background-color: #fff;
       box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-      padding: 20px;
+      padding: 15px;
       margin: auto;
       max-width: 1000px;
       border-radius: 10px;
@@ -23,11 +23,13 @@
     table {
       width: 100%;
       border-collapse: collapse;
+      overflow-x: auto;
     }
     th, td {
-      padding: 10px;
+      padding: 8px;
       border: 1px solid #ccc;
       text-align: center;
+      font-size: 14px;
     }
     th {
       background-color: gold;
@@ -35,11 +37,38 @@
     }
     button {
       margin: 2px;
-      padding: 5px 10px;
+      padding: 5px 8px;
       cursor: pointer;
     }
     .hidden {
       display: none;
+    }
+    @media screen and (max-width: 768px) {
+      table, thead, tbody, th, td, tr {
+        display: block;
+      }
+      th {
+        display: none;
+      }
+      td {
+        position: relative;
+        padding-left: 50%;
+        border: none;
+        border-bottom: 1px solid #ccc;
+      }
+      td:before {
+        position: absolute;
+        top: 8px;
+        left: 8px;
+        width: 45%;
+        white-space: nowrap;
+        font-weight: bold;
+      }
+      td:nth-of-type(1):before { content: "Name"; }
+      td:nth-of-type(2):before { content: "Gender"; }
+      td:nth-of-type(3):before { content: "Village"; }
+      td:nth-of-type(4):before { content: "Salary"; }
+      td:nth-of-type(5):before { content: "Actions"; }
     }
   </style>
 
@@ -50,7 +79,9 @@
 <body>
   <div class="card">
     <h2 style="text-align: center;">👥 Workers List</h2>
-    <div id="workersTable"></div>
+    <div id="reportContent">
+      <div id="workersTable"></div>
+    </div>
     <div style="text-align: center; margin-top: 20px;">
       <button onclick="downloadPDF()">⬇️ Download PDF</button>
     </div>
@@ -62,7 +93,6 @@
       authDomain: "worker-management-50d6d.firebaseapp.com",
       projectId: "worker-management-50d6d"
     };
-
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
 
@@ -70,10 +100,10 @@
 
     function loadWorkers() {
       db.collection("workers").orderBy("createdAt", "desc").get().then(snapshot => {
-        let html = `<div id="reportContent"><table>
+        let html = `<table><thead>
           <tr>
             <th>Name</th><th>Gender</th><th>Village</th><th>Salary (₹)</th><th>Actions</th>
-          </tr>`;
+          </tr></thead><tbody>`;
 
         snapshot.forEach(doc => {
           const w = doc.data();
@@ -108,7 +138,7 @@
             </tr>`;
         });
 
-        html += `</table></div>`;
+        html += `</tbody></table>`;
         tableDiv.innerHTML = html;
       });
     }
@@ -156,11 +186,12 @@
     function downloadPDF() {
       const element = document.getElementById("reportContent");
       const opt = {
-        margin: 0.5,
+        margin: 0.2,
         filename: 'workers_list.pdf',
         image: { type: 'jpeg', quality: 0.98 },
         html2canvas: { scale: 2 },
-        jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' }
+        jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' },
+        pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
       };
       html2pdf().set(opt).from(element).save();
     }
