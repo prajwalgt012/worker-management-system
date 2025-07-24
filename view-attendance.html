@@ -6,83 +6,130 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.4.0/jspdf.umd.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+
   <style>
+    * { box-sizing: border-box; }
     body {
       font-family: 'Segoe UI', sans-serif;
-      margin: 10px;
+      margin: 0;
       padding: 0;
-      background: #f8f8f8;
+      background-color: #ffffff;
+      color: #000;
+    }
+    .card {
+      max-width: 1000px;
+      margin: 20px auto;
+      padding: 20px;
+      border-radius: 10px;
+      background-color: #fefefe;
+      box-shadow: 0 0 8px rgba(0, 0, 0, 0.1);
     }
     h2 {
+      margin-bottom: 20px;
+      font-size: 1.5rem;
       text-align: center;
-      margin: 10px 0;
     }
-    .filters {
-      text-align: center;
-      margin-bottom: 15px;
+    label {
+      font-weight: 600;
     }
-    .filters input, .filters button {
-      padding: 6px 10px;
-      margin: 4px;
+    input[type="date"] {
+      padding: 8px;
+      margin: 5px;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+      width: 100%;
+      max-width: 200px;
+    }
+    button {
+      background-color: #ffc107;
+      border: none;
+      padding: 10px 20px;
+      margin: 10px 5px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: bold;
+      color: #000;
+    }
+    button:hover {
+      background-color: #e6b800;
+    }
+    .summary-box {
+      text-align: left;
+      margin-top: 20px;
+      padding: 10px;
+      border: 1px solid #ddd;
+      border-radius: 10px;
+      background: #f9f9f9;
+      font-size: 0.95rem;
+    }
+    .table-container {
+      overflow-x: auto;
+      margin-top: 20px;
     }
     table {
       width: 100%;
+      min-width: 600px;
       border-collapse: collapse;
-      margin-top: 10px;
-      background: white;
     }
     th, td {
-      border: 1px solid #ccc;
-      padding: 6px;
+      padding: 10px;
       text-align: center;
+      border: 1px solid #ddd;
     }
     th {
-      background-color: #f0f0f0;
+      background-color: #ffcc00;
     }
-    tr:nth-child(even) {
-      background: #f9f9f9;
-    }
-    .summary {
-      margin-top: 10px;
-      font-size: 14px;
-      text-align: center;
-    }
-    @media (max-width: 768px) {
-      table {
-        font-size: 12px;
+    @media (max-width: 600px) {
+      h2 { font-size: 1.2rem; }
+      .button-group {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        align-items: center;
+      }
+      input[type="date"] {
+        max-width: 100%;
       }
     }
   </style>
 </head>
+
 <body>
+  <div class="card" id="reportSection">
+    <h2>📊 Attendance Report</h2>
 
-  <h2>📅 Attendance Report (Name-wise Matrix)</h2>
-  <div class="filters">
-    <label>Start Date:</label>
-    <input type="date" id="startDate" />
-    <label>End Date:</label>
-    <input type="date" id="endDate" />
-    <button onclick="loadAttendance()">🔍 Load Attendance</button>
-    <button onclick="downloadPDF()">📥 Download PDF</button>
+    <div class="button-group" style="text-align:center">
+      <label for="startDate">Start Date:</label>
+      <input type="date" id="startDate" />
+
+      <label for="endDate">End Date:</label>
+      <input type="date" id="endDate" />
+
+      <button onclick="loadAttendance()">🔍 View Report</button>
+      <button onclick="downloadPDF()">📥 Download PDF</button>
+    </div>
+
+    <div id="attendancePDFContent">
+      <div id="summarySection" class="summary-box"></div>
+      <div class="table-container">
+        <div id="attendanceTable"></div>
+      </div>
+    </div>
   </div>
-
-  <div id="attendanceTable"></div>
-  <div class="summary" id="summarySection"></div>
 
   <script>
     const firebaseConfig = {
-      apiKey: "AIzaSyCJLo6CsZDiYrygv9huk0_BLHmQvkhRxxY",
-      authDomain: "bams-social-app.firebaseapp.com",
-      projectId: "bams-social-app",
-      storageBucket: "bams-social-app.appspot.com",
-      messagingSenderId: "542183068748",
-      appId: "1:542183068748:web:c6beb38679a3026eae10e9"
+      apiKey: "AIzaSyC3aue5Fg1Rpqk3rzkjQiQTBe76U6RA7GM",
+      authDomain: "worker-management-50d6d.firebaseapp.com",
+      projectId: "worker-management-50d6d"
     };
-
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
+
+    const today = new Date().toISOString().split("T")[0];
+    document.getElementById("startDate").setAttribute("max", today);
+    document.getElementById("endDate").setAttribute("max", today);
 
     async function loadAttendance() {
       const start = document.getElementById("startDate").value;
@@ -95,11 +142,8 @@
 
       const workersSnap = await db.collection("workers").get();
       const workers = {};
-      const workerOrder = [];
-
       workersSnap.forEach(doc => {
         workers[doc.id] = doc.data();
-        workerOrder.push(doc.id);
       });
 
       const attendanceSnap = await db.collection("attendance")
@@ -108,90 +152,109 @@
         .orderBy("date")
         .get();
 
-      const attendanceMatrix = {};
-      const dateSet = new Set();
-
+      const records = [];
       attendanceSnap.forEach(doc => {
         const data = doc.data();
-        const dateStr = data.date;
-        const workerId = data.workerId;
-        if (!attendanceMatrix[dateStr]) {
-          attendanceMatrix[dateStr] = {};
+        if (data.status) {
+          records.push(data);
         }
-        attendanceMatrix[dateStr][workerId] = data.status;
-        dateSet.add(dateStr);
       });
 
-      const sortedDates = Array.from(dateSet).sort();
-
-      if (sortedDates.length === 0) {
+      if (records.length === 0) {
         document.getElementById("attendanceTable").innerHTML =
           `<p style="text-align:center; color:gray;">📭 No attendance data found for the selected range.</p>`;
         document.getElementById("summarySection").innerHTML = '';
         return;
       }
 
-      const totals = {};
-      workerOrder.forEach(id => {
-        totals[id] = 0;
+      let html = `<table>
+        <thead>
+        <tr>
+          <th>Date</th>
+          <th>Day</th>
+          <th>Name</th>
+          <th>Village</th>
+          <th>Status</th>
+        </tr>
+        </thead>
+        <tbody>`;
+
+      const daySummary = {};
+      const nameSummary = {};
+      let totalFull = 0;
+      let totalHalf = 0;
+      let totalAbsent = 0;
+
+      records.forEach(record => {
+        const worker = workers[record.workerId];
+        const status = record.status || "absent";
+        const date = new Date(record.date);
+        const dateStr = record.date;
+        const day = date.toLocaleDateString('en-IN', { weekday: 'long' });
+
+        if (!daySummary[day]) daySummary[day] = { full: 0, half: 0, absent: 0 };
+        if (status === "full") {
+          daySummary[day].full += 1;
+          totalFull++;
+        } else if (status === "half") {
+          daySummary[day].half += 1;
+          totalHalf++;
+        } else {
+          daySummary[day].absent += 1;
+          totalAbsent++;
+        }
+
+        const workerName = worker?.name || '❓ Unknown';
+        if (!nameSummary[workerName]) nameSummary[workerName] = { full: 0, half: 0, absent: 0 };
+        if (status === "full") nameSummary[workerName].full += 1;
+        else if (status === "half") nameSummary[workerName].half += 1;
+        else nameSummary[workerName].absent += 1;
+
+        const emoji = status === "full" ? "✅ Full" :
+                      status === "half" ? "🌓 Half" : "❌ Absent";
+
+        html += `<tr>
+          <td>${dateStr}</td>
+          <td>${day}</td>
+          <td>${workerName}</td>
+          <td>${worker?.village || '-'}</td>
+          <td>${emoji}</td>
+        </tr>`;
       });
-
-      let html = `<table><thead><tr><th>Date</th>`;
-      workerOrder.forEach(id => {
-        html += `<th>${workers[id]?.name || '❓'}</th>`;
-      });
-      html += `</tr></thead><tbody>`;
-
-      sortedDates.forEach(dateStr => {
-        const date = new Date(dateStr);
-        const day = date.toLocaleDateString('en-IN', { weekday: 'short' });
-        html += `<tr><td>${dateStr}<br><small>${day}</small></td>`;
-
-        workerOrder.forEach(id => {
-          const status = attendanceMatrix[dateStr]?.[id] || 'absent';
-          let emoji = "❌";
-          if (status === "full") {
-            emoji = "✅";
-            totals[id]++;
-          } else if (status === "half") {
-            emoji = "🌓";
-            totals[id]++;
-          }
-          html += `<td>${emoji}</td>`;
-        });
-
-        html += `</tr>`;
-      });
-
-      // Add final row: totals per worker
-      html += `<tr><td><b>Total Full+Half</b></td>`;
-      workerOrder.forEach(id => {
-        html += `<td><b>${totals[id]}</b></td>`;
-      });
-      html += `</tr>`;
 
       html += "</tbody></table>";
       document.getElementById("attendanceTable").innerHTML = html;
 
-      document.getElementById("summarySection").innerHTML =
-        `<p>🧾 Showing <b>${sortedDates.length}</b> days for <b>${workerOrder.length}</b> workers. <br> ✅ = Full, 🌓 = Half, ❌ = Absent</p>`;
+      let summaryHTML = `<h3>📈 Summary by Day</h3><ul>`;
+      for (const day in daySummary) {
+        summaryHTML += `<li><b>${day}:</b> ✅ Full: ${daySummary[day].full}, 🌓 Half: ${daySummary[day].half}, ❌ Absent: ${daySummary[day].absent}</li>`;
+      }
+      summaryHTML += `</ul><h4>📊 Grand Total:</h4>
+        <ul>
+          <li>✅ Total Full: ${totalFull}</li>
+          <li>🌓 Total Half: ${totalHalf}</li>
+          <li>❌ Total Absent: ${totalAbsent}</li>
+        </ul>`;
+
+      summaryHTML += `<h3>🧑‍🤝‍🧑 Summary by Name</h3><ul>`;
+      for (const name in nameSummary) {
+        summaryHTML += `<li><b>${name}:</b> ✅ Full: ${nameSummary[name].full}, 🌓 Half: ${nameSummary[name].half}, ❌ Absent: ${nameSummary[name].absent}</li>`;
+      }
+      summaryHTML += `</ul>`;
+
+      document.getElementById("summarySection").innerHTML = summaryHTML;
     }
 
-    async function downloadPDF() {
-      const table = document.getElementById("attendanceTable");
-      if (!table.innerHTML.trim()) return alert("❌ No report to export");
-
-      const { jsPDF } = window.jspdf;
-      const doc = new jsPDF('landscape', 'pt', 'a4');
-
-      const canvas = await html2canvas(table);
-      const imgData = canvas.toDataURL("image/png");
-      const imgWidth = doc.internal.pageSize.getWidth() - 40;
-      const imgHeight = canvas.height * imgWidth / canvas.width;
-
-      doc.text("Attendance Report", 40, 30);
-      doc.addImage(imgData, 'PNG', 20, 40, imgWidth, imgHeight);
-      doc.save("attendance-report.pdf");
+    function downloadPDF() {
+      const element = document.getElementById("attendancePDFContent");
+      const opt = {
+        margin: 0.5,
+        filename: 'Attendance_Report.pdf',
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 3, scrollY: 0, useCORS: true },
+        jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' }
+      };
+      html2pdf().set(opt).from(element).save();
     }
   </script>
 </body>
