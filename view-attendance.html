@@ -1,107 +1,101 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Attendance Report - Todakar Farm</title>
-  <link href="https://cdn.jsdelivr.net/npm/lucide@0.224.0/dist/umd/lucide.min.css" rel="stylesheet"/>
+  <meta charset="UTF-8">
+  <title>Attendance View</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link href="https://cdn.jsdelivr.net/npm/lucide@latest/dist/lu.css" rel="stylesheet">
   <style>
     body {
-      font-family: 'Segoe UI', sans-serif;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: #f3f4f6;
+      padding: 20px;
       margin: 0;
-      padding: 20px;
-      background: #f4f4f4;
     }
-
-    h2 {
-      text-align: center;
+    h1, h2, h3 {
+      color: #222;
     }
-
     .container {
-      max-width: 960px;
+      max-width: 900px;
       margin: auto;
-      background: white;
+      background: #fff;
       padding: 20px;
-      border-radius: 8px;
+      border-radius: 12px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.08);
     }
-
-    input[type="date"], button {
-      padding: 10px;
-      margin: 5px;
-      border-radius: 5px;
+    input[type="date"] {
+      padding: 8px 10px;
       border: 1px solid #ccc;
+      border-radius: 6px;
+      margin-right: 10px;
     }
-
+    button {
+      padding: 8px 16px;
+      background-color: #007bff;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    button:hover {
+      background-color: #0056b3;
+    }
     table {
       width: 100%;
+      margin-top: 20px;
       border-collapse: collapse;
-      margin-top: 20px;
-      font-size: 14px;
     }
-
-    th, td {
-      border: 1px solid #ddd;
-      padding: 8px;
-      text-align: center;
+    table th, table td {
+      padding: 10px;
+      text-align: left;
+      border-bottom: 1px solid #ddd;
     }
-
-    th {
-      background: #28a745;
-      color: white;
+    table th {
+      background: #f0f0f0;
     }
-
-    tr:nth-child(even) {
-      background-color: #f2f2f2;
+    ul {
+      list-style-type: none;
+      padding-left: 0;
     }
-
-    .summary {
-      margin-top: 20px;
+    ul li {
+      margin-bottom: 6px;
     }
-
     @media (max-width: 600px) {
       table, thead, tbody, th, td, tr {
         display: block;
       }
-
-      th {
-        position: sticky;
-        top: 0;
-        background: #28a745;
+      table thead {
+        display: none;
       }
-
-      td {
-        text-align: right;
-        padding-left: 50%;
+      table td {
+        padding: 8px;
+        border: none;
+        border-bottom: 1px solid #eee;
         position: relative;
       }
-
-      td::before {
-        position: absolute;
-        top: 8px;
-        left: 10px;
-        width: 45%;
-        white-space: nowrap;
-        font-weight: bold;
+      table td::before {
         content: attr(data-label);
-        text-align: left;
+        font-weight: bold;
+        display: block;
       }
     }
   </style>
 </head>
 <body>
   <div class="container">
-    <h2>Attendance Report - Todakar Farm</h2>
+    <h1>📅 View Attendance</h1>
+    <div style="margin: 20px 0;">
+      <label>Start Date: <input type="date" id="startDate"></label>
+      <label>End Date: <input type="date" id="endDate"></label>
+      <button onclick="loadAttendance()">🔍 View</button>
+    </div>
 
-    <label>Start Date: <input type="date" id="startDate" /></label>
-    <label>End Date: <input type="date" id="endDate" /></label>
-    <button onclick="fetchAttendance()">Generate Report</button>
-
-    <div id="report"></div>
+    <div id="attendanceTable"></div>
+    <div id="summarySection" style="margin-top: 30px;"></div>
   </div>
 
-  <!-- Firebase -->
-  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-firestore-compat.js"></script>
   <script>
     const firebaseConfig = {
       apiKey: "AIzaSyCJLo6CsZDiYrygv9huk0_BLHmQvkhRxxY",
@@ -114,56 +108,109 @@
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
 
-    function formatDate(date) {
-      const d = new Date(date);
-      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-    }
+    async function loadAttendance() {
+      const start = document.getElementById("startDate").value;
+      const end = document.getElementById("endDate").value;
+      if (!start || !end) return alert("⚠️ Please select both start and end dates.");
 
-    async function fetchAttendance() {
-      const startDate = new Date(document.getElementById('startDate').value);
-      const endDate = new Date(document.getElementById('endDate').value);
-      const today = new Date();
-      endDate.setHours(23, 59, 59, 999);
+      const startDate = new Date(start);
+      const endDate = new Date(end);
+      if (startDate > endDate) return alert("❌ Start date must be before end date.");
 
-      if (!startDate || !endDate) return alert("Select both start and end dates.");
-
-      const snapshot = await db.collection('attendance')
-        .where('date', '>=', startDate)
-        .where('date', '<=', today < endDate ? today : endDate)
-        .get();
-
-      const data = {};
-      snapshot.forEach(doc => {
-        const entry = doc.data();
-        const dateStr = formatDate(entry.date.toDate());
-        const day = new Date(entry.date.toDate()).toLocaleString('en-US', { weekday: 'long' });
-
-        if (!data[entry.name]) data[entry.name] = {};
-        if (!data[entry.name][day]) data[entry.name][day] = { Full: 0, Half: 0, Absent: 0 };
-
-        data[entry.name][day][entry.status]++;
+      const workersSnap = await db.collection("workers").get();
+      const workers = {};
+      workersSnap.forEach(doc => {
+        workers[doc.id] = doc.data();
       });
 
-      generateReport(data);
-    }
+      const attendanceSnap = await db.collection("attendance")
+        .where("date", ">=", start)
+        .where("date", "<=", end)
+        .orderBy("date")
+        .get();
 
-    function generateReport(data) {
-      const reportDiv = document.getElementById('report');
-      let html = `<table><thead><tr><th>Name</th><th>Day</th><th>Full</th><th>Half</th><th>Absent</th></tr></thead><tbody>`;
-      for (const name in data) {
-        for (const day in data[name]) {
-          const d = data[name][day];
-          html += `<tr>
-            <td data-label="Name">${name}</td>
-            <td data-label="Day">${day}</td>
-            <td data-label="Full">${d.Full}</td>
-            <td data-label="Half">${d.Half}</td>
-            <td data-label="Absent">${d.Absent}</td>
-          </tr>`;
+      const records = [];
+      attendanceSnap.forEach(doc => {
+        const data = doc.data();
+        if (data.status) {
+          records.push(data);
         }
+      });
+
+      if (records.length === 0) {
+        document.getElementById("attendanceTable").innerHTML = `<p style="text-align:center; color:gray;">📭 No attendance data found for the selected range.</p>`;
+        document.getElementById("summarySection").innerHTML = '';
+        return;
       }
-      html += `</tbody></table>`;
-      reportDiv.innerHTML = html;
+
+      let html = `<table>
+        <thead>
+        <tr>
+          <th>Date</th>
+          <th>Day</th>
+          <th>Name</th>
+          <th>Village</th>
+          <th>Status</th>
+        </tr>
+        </thead>
+        <tbody>`;
+
+      const daySummary = {};
+      const nameSummary = {};
+      let totalFull = 0, totalHalf = 0, totalAbsent = 0;
+
+      records.forEach(record => {
+        const worker = workers[record.workerId];
+        const status = record.status || "absent";
+        const date = new Date(record.date);
+        const dateStr = record.date;
+        const day = date.toLocaleDateString('en-IN', { weekday: 'long' });
+        const emoji = status === "full" ? "✅ Full" : status === "half" ? "🌓 Half" : "❌ Absent";
+
+        if (!daySummary[day]) daySummary[day] = { full: 0, half: 0, absent: 0 };
+        daySummary[day][status]++;
+
+        const name = worker?.name || "❓ Unknown";
+        if (!nameSummary[name]) nameSummary[name] = { full: 0, half: 0, absent: 0 };
+        nameSummary[name][status]++;
+
+        if (status === "full") totalFull++;
+        else if (status === "half") totalHalf++;
+        else totalAbsent++;
+
+        html += `<tr>
+          <td data-label="Date">${dateStr}</td>
+          <td data-label="Day">${day}</td>
+          <td data-label="Name">${name}</td>
+          <td data-label="Village">${worker?.village || '-'}</td>
+          <td data-label="Status">${emoji}</td>
+        </tr>`;
+      });
+
+      html += "</tbody></table>";
+      document.getElementById("attendanceTable").innerHTML = html;
+
+      // Summary by Day
+      let summaryHTML = `<h3>📈 Summary by Day</h3><ul>`;
+      for (const day in daySummary) {
+        summaryHTML += `<li><b>${day}:</b> ✅ Full: ${daySummary[day].full}, 🌓 Half: ${daySummary[day].half}, ❌ Absent: ${daySummary[day].absent}</li>`;
+      }
+      summaryHTML += `</ul><h4>📊 Grand Total:</h4>
+        <ul>
+          <li>✅ Total Full: ${totalFull}</li>
+          <li>🌓 Total Half: ${totalHalf}</li>
+          <li>❌ Total Absent: ${totalAbsent}</li>
+        </ul>`;
+
+      // Summary by Name
+      summaryHTML += `<h3>👤 Worker-wise Summary</h3><ul>`;
+      for (const name in nameSummary) {
+        const entry = nameSummary[name];
+        summaryHTML += `<li><b>${name}:</b> ✅ Full: ${entry.full}, 🌓 Half: ${entry.half}, ❌ Absent: ${entry.absent}</li>`;
+      }
+      summaryHTML += `</ul>`;
+
+      document.getElementById("summarySection").innerHTML = summaryHTML;
     }
   </script>
 </body>
