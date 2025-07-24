@@ -158,10 +158,6 @@
       const attendanceMatrix = {};
       const dateSet = new Set();
 
-      let totalFull = 0;
-      let totalHalf = 0;
-      let totalAbsent = 0;
-
       attendanceSnap.forEach(doc => {
         const data = doc.data();
         const dateStr = data.date;
@@ -171,10 +167,6 @@
         if (!attendanceMatrix[dateStr]) attendanceMatrix[dateStr] = {};
         attendanceMatrix[dateStr][workerId] = status;
         dateSet.add(dateStr);
-
-        if (status === "full") totalFull++;
-        else if (status === "half") totalHalf++;
-        else totalAbsent++;
       });
 
       const sortedDates = Array.from(dateSet).sort();
@@ -192,6 +184,8 @@
       });
       html += `</tr></thead><tbody>`;
 
+      let totalFull = 0, totalHalf = 0, totalAbsent = 0;
+
       sortedDates.forEach(dateStr => {
         const date = new Date(dateStr);
         const day = date.toLocaleDateString('en-IN', { weekday: 'short' });
@@ -201,6 +195,12 @@
           const status = attendanceMatrix[dateStr]?.[id] || 'absent';
           const emoji = status === "full" ? "✅" :
                         status === "half" ? "🌓" : "❌";
+
+          // ✅ Count total from table cells
+          if (status === "full") totalFull++;
+          else if (status === "half") totalHalf++;
+          else totalAbsent++;
+
           html += `<td>${emoji}</td>`;
         });
 
@@ -210,15 +210,16 @@
       html += "</tbody></table>";
       document.getElementById("attendanceTable").innerHTML = html;
 
-      // Summary
+      // 🧾 Summary
       document.getElementById("summarySection").innerHTML = `
-        <h3>📈 Summary</h3>
+        <h3>📈 Summary (Based on Table)</h3>
         <ul>
           <li>✅ Total Full: ${totalFull}</li>
           <li>🌓 Total Half: ${totalHalf}</li>
           <li>❌ Total Absent: ${totalAbsent}</li>
           <li>📅 Days Covered: ${sortedDates.length}</li>
           <li>👥 Workers: ${workerOrder.length}</li>
+          <li>📊 Total Entries: ${totalFull + totalHalf + totalAbsent}</li>
         </ul>`;
     }
 
