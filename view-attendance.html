@@ -188,15 +188,33 @@ async function loadAttendance() {
     </ul>`;
 }
 
-function downloadPDF() {
-  alert("PDF generation is no longer reliable for wide tables. Please use Excel export.");
-}
-
 function exportToExcel() {
   const table = document.querySelector("#attendanceTable table");
   if (!table) return alert("No data to export.");
-  const workbook = XLSX.utils.table_to_book(table, { sheet: "Attendance" });
-  XLSX.writeFile(workbook, "Attendance_Matrix.xlsx");
+
+  const rows = Array.from(table.rows).map(row =>
+    Array.from(row.cells).map(cell => cell.innerText)
+  );
+
+  const ws = XLSX.utils.aoa_to_sheet(rows);
+
+  // Apply header styling
+  const headerRange = XLSX.utils.decode_range(ws['!ref']);
+  for (let C = headerRange.s.c; C <= headerRange.e.c; ++C) {
+    const cellAddress = XLSX.utils.encode_cell({ r: 0, c: C });
+    if (!ws[cellAddress]) continue;
+    ws[cellAddress].s = {
+      fill: { fgColor: { rgb: "FFFACD" } }, // Light yellow
+      font: { bold: true }
+    };
+  }
+
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Attendance");
+
+  ws['!cols'] = rows[0].map(() => ({ wch: 15 }));
+
+  XLSX.writeFile(wb, "Attendance_Matrix_Colorful.xlsx");
 }
 </script>
 </body>
