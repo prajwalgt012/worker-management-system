@@ -175,6 +175,7 @@
           <th>Name</th>
           <th>Village</th>
           <th>Status</th>
+          <th>Total</th>
         </tr>
         </thead>
         <tbody>`;
@@ -213,14 +214,23 @@
         const emoji = status === "full" ? "✅ Full" :
                       status === "half" ? "🌓 Half" : "❌ Absent";
 
+        const totalCell = status === "full" ? "✅ 1 / 🌓 0" :
+                          status === "half" ? "✅ 0 / 🌓 1" : "-";
+
         html += `<tr>
           <td>${dateStr}</td>
           <td>${day}</td>
           <td>${workerName}</td>
           <td>${worker?.village || '-'}</td>
           <td>${emoji}</td>
+          <td>${totalCell}</td>
         </tr>`;
       });
+
+      html += `<tr>
+        <td colspan="5"><b>🔢 Total (All Workers)</b></td>
+        <td><b>✅ ${totalFull} / 🌓 ${totalHalf}</b></td>
+      </tr>`;
 
       html += "</tbody></table>";
       document.getElementById("attendanceTable").innerHTML = html;
