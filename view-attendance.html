@@ -195,24 +195,21 @@
           let symbol = '❌';
           if (status === 'full') {
             symbol = '✅'; rowFull++; colTotals[id].full++;
-          } else if (status === 'half') {
+          } else  (status === 'half') {
             symbol = '🌓'; rowHalf++; colTotals[id].half++;
-          } else {
-            rowAbsent++; colTotals[id].absent++;
-          }
+          } 
           html += `<td>${symbol}</td>`;
         });
 
-        html += `<td>${rowFull}</td><td>${rowHalf}</td><td>${rowAbsent}</td></tr>`;
+        html += `<td>${rowFull}</td><td>${rowHalf}</td></tr>`;
         grandFull += rowFull;
         grandHalf += rowHalf;
-        grandAbsent += rowAbsent;
       });
 
       html += `<tr><th>Total</th>`;
       workerIds.forEach(id => {
         const t = colTotals[id];
-        html += `<th>✅ ${t.full}<br>🌓 ${t.half}<br>❌ ${t.absent}</th>`;
+        html += `<th>✅ ${t.full}<br>🌓 ${t.half}</th>`;
       });
       html += `<th>-</th><th>-</th><th>-</th></tr>`;
       html += `</tbody></table>`;
@@ -223,7 +220,6 @@
         <ul>
           <li>✅ Total Full: <b>${grandFull}</b></li>
           <li>🌓 Total Half: <b>${grandHalf}</b></li>
-          <li>❌ Total Absent: <b>${grandAbsent}</b></li>
           <li>👥 Total Workers: <b>${workerIds.length}</b></li>
           <li>🗓️ Total Days: <b>${dates.length}</b></li>
         </ul>`;
