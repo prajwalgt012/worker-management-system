@@ -1,101 +1,82 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Attendance View</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <link href="https://cdn.jsdelivr.net/npm/lucide@latest/dist/lu.css" rel="stylesheet">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>View Attendance</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/lucide/0.263.0/lucide.min.css">
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <style>
     body {
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      background: #f3f4f6;
+      font-family: Arial, sans-serif;
       padding: 20px;
       margin: 0;
+      background: #ffffff;
+      color: #000;
     }
-    h1, h2, h3 {
-      color: #222;
+    h2 {
+      text-align: center;
     }
-    .container {
-      max-width: 900px;
-      margin: auto;
-      background: #fff;
-      padding: 20px;
-      border-radius: 12px;
-      box-shadow: 0 0 10px rgba(0,0,0,0.08);
+    .filters {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      justify-content: center;
+      margin-bottom: 20px;
     }
-    input[type="date"] {
-      padding: 8px 10px;
-      border: 1px solid #ccc;
-      border-radius: 6px;
-      margin-right: 10px;
+    .filters input {
+      padding: 8px;
+      font-size: 16px;
     }
-    button {
-      padding: 8px 16px;
-      background-color: #007bff;
+    .filters button {
+      padding: 10px 15px;
+      background: black;
       color: white;
       border: none;
-      border-radius: 6px;
       cursor: pointer;
     }
-    button:hover {
-      background-color: #0056b3;
+    .summary, .results {
+      overflow-x: auto;
+      margin-top: 20px;
     }
     table {
-      width: 100%;
-      margin-top: 20px;
       border-collapse: collapse;
+      width: 100%;
+      margin-top: 10px;
     }
-    table th, table td {
-      padding: 10px;
-      text-align: left;
-      border-bottom: 1px solid #ddd;
+    table, th, td {
+      border: 1px solid #000;
     }
-    table th {
-      background: #f0f0f0;
-    }
-    ul {
-      list-style-type: none;
-      padding-left: 0;
-    }
-    ul li {
-      margin-bottom: 6px;
+    th, td {
+      padding: 8px;
+      text-align: center;
     }
     @media (max-width: 600px) {
-      table, thead, tbody, th, td, tr {
-        display: block;
+      body {
+        padding: 10px;
       }
-      table thead {
-        display: none;
-      }
-      table td {
-        padding: 8px;
-        border: none;
-        border-bottom: 1px solid #eee;
-        position: relative;
-      }
-      table td::before {
-        content: attr(data-label);
-        font-weight: bold;
-        display: block;
+      .filters {
+        flex-direction: column;
+        align-items: center;
       }
     }
   </style>
 </head>
 <body>
-  <div class="container">
-    <h1>📅 View Attendance</h1>
-    <div style="margin: 20px 0;">
-      <label>Start Date: <input type="date" id="startDate"></label>
-      <label>End Date: <input type="date" id="endDate"></label>
-      <button onclick="loadAttendance()">🔍 View</button>
-    </div>
+  <h2>📊 Attendance Report</h2>
 
-    <div id="attendanceTable"></div>
-    <div id="summarySection" style="margin-top: 30px;"></div>
+  <div class="filters">
+    <label>From: <input type="date" id="startDate" /></label>
+    <label>To: <input type="date" id="endDate" /></label>
+    <button onclick="fetchAttendance()">Get Report</button>
+    <button onclick="downloadPDF()">📥 Download PDF</button>
   </div>
 
-  <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-firestore-compat.js"></script>
+  <div id="summary" class="summary"></div>
+  <div id="results" class="results"></div>
+
   <script>
     const firebaseConfig = {
       apiKey: "AIzaSyCJLo6CsZDiYrygv9huk0_BLHmQvkhRxxY",
@@ -103,114 +84,102 @@
       projectId: "bams-social-app",
       storageBucket: "bams-social-app.appspot.com",
       messagingSenderId: "542183068748",
-      appId: "1:542183068748:web:c6beb38679a3026eae10e9"
+      appId: "1:542183068748:web:c6beb38679a3026eae10e9",
+      measurementId: "G-40MHQ4M0X5"
     };
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
 
-    async function loadAttendance() {
-      const start = document.getElementById("startDate").value;
-      const end = document.getElementById("endDate").value;
-      if (!start || !end) return alert("⚠️ Please select both start and end dates.");
+    function convertToMMDDYY(dateStr) {
+      const date = new Date(dateStr);
+      const mm = String(date.getMonth() + 1).padStart(2, '0');
+      const dd = String(date.getDate()).padStart(2, '0');
+      const yy = String(date.getFullYear()).slice(2);
+      return `${mm}/${dd}/${yy}`;
+    }
 
-      const startDate = new Date(start);
-      const endDate = new Date(end);
-      if (startDate > endDate) return alert("❌ Start date must be before end date.");
+    async function fetchAttendance() {
+      const startInput = document.getElementById("startDate").value;
+      const endInput = document.getElementById("endDate").value;
+      if (!startInput || !endInput) return alert("Please select date range.");
 
-      const workersSnap = await db.collection("workers").get();
-      const workers = {};
-      workersSnap.forEach(doc => {
-        workers[doc.id] = doc.data();
-      });
+      const start = convertToMMDDYY(startInput);
+      const end = convertToMMDDYY(endInput);
 
-      const attendanceSnap = await db.collection("attendance")
-        .where("date", ">=", start)
-        .where("date", "<=", end)
-        .orderBy("date")
-        .get();
+      const snapshot = await db.collection("attendance").orderBy("date").get();
 
-      const records = [];
-      attendanceSnap.forEach(doc => {
-        const data = doc.data();
-        if (data.status) {
-          records.push(data);
-        }
-      });
+      const filteredData = snapshot.docs
+        .map(doc => doc.data())
+        .filter(entry => entry.date >= start && entry.date <= end);
 
-      if (records.length === 0) {
-        document.getElementById("attendanceTable").innerHTML = `<p style="text-align:center; color:gray;">📭 No attendance data found for the selected range.</p>`;
-        document.getElementById("summarySection").innerHTML = '';
+      if (filteredData.length === 0) {
+        document.getElementById("results").innerHTML = "📭 No attendance data found for the selected range.";
+        document.getElementById("summary").innerHTML = "";
         return;
       }
 
-      let html = `<table>
-        <thead>
-        <tr>
-          <th>Date</th>
-          <th>Day</th>
-          <th>Name</th>
-          <th>Village</th>
-          <th>Status</th>
-        </tr>
-        </thead>
-        <tbody>`;
+      const grouped = {};
+      const dateWiseSummary = {};
 
-      const daySummary = {};
-      const nameSummary = {};
-      let totalFull = 0, totalHalf = 0, totalAbsent = 0;
+      filteredData.forEach(entry => {
+        const { name, date, attendance } = entry;
+        if (!grouped[name]) grouped[name] = [];
+        grouped[name].push({ date, attendance });
 
-      records.forEach(record => {
-        const worker = workers[record.workerId];
-        const status = record.status || "absent";
-        const date = new Date(record.date);
-        const dateStr = record.date;
-        const day = date.toLocaleDateString('en-IN', { weekday: 'long' });
-        const emoji = status === "full" ? "✅ Full" : status === "half" ? "🌓 Half" : "❌ Absent";
-
-        if (!daySummary[day]) daySummary[day] = { full: 0, half: 0, absent: 0 };
-        daySummary[day][status]++;
-
-        const name = worker?.name || "❓ Unknown";
-        if (!nameSummary[name]) nameSummary[name] = { full: 0, half: 0, absent: 0 };
-        nameSummary[name][status]++;
-
-        if (status === "full") totalFull++;
-        else if (status === "half") totalHalf++;
-        else totalAbsent++;
-
-        html += `<tr>
-          <td data-label="Date">${dateStr}</td>
-          <td data-label="Day">${day}</td>
-          <td data-label="Name">${name}</td>
-          <td data-label="Village">${worker?.village || '-'}</td>
-          <td data-label="Status">${emoji}</td>
-        </tr>`;
+        if (!dateWiseSummary[date]) dateWiseSummary[date] = { full: 0, half: 0, absent: 0 };
+        if (attendance === 'full') dateWiseSummary[date].full++;
+        else if (attendance === 'half') dateWiseSummary[date].half++;
+        else dateWiseSummary[date].absent++;
       });
 
-      html += "</tbody></table>";
-      document.getElementById("attendanceTable").innerHTML = html;
-
-      // Summary by Day
-      let summaryHTML = `<h3>📈 Summary by Day</h3><ul>`;
-      for (const day in daySummary) {
-        summaryHTML += `<li><b>${day}:</b> ✅ Full: ${daySummary[day].full}, 🌓 Half: ${daySummary[day].half}, ❌ Absent: ${daySummary[day].absent}</li>`;
+      let html = "";
+      for (const name in grouped) {
+        html += `<h3>${name}</h3><table><tr><th>Date</th><th>Attendance</th></tr>`;
+        grouped[name].forEach(e => {
+          html += `<tr><td>${e.date}</td><td>${e.attendance}</td></tr>`;
+        });
+        html += `</table>`;
       }
-      summaryHTML += `</ul><h4>📊 Grand Total:</h4>
-        <ul>
-          <li>✅ Total Full: ${totalFull}</li>
-          <li>🌓 Total Half: ${totalHalf}</li>
-          <li>❌ Total Absent: ${totalAbsent}</li>
-        </ul>`;
+      document.getElementById("results").innerHTML = html;
 
-      // Summary by Name
-      summaryHTML += `<h3>👤 Worker-wise Summary</h3><ul>`;
-      for (const name in nameSummary) {
-        const entry = nameSummary[name];
-        summaryHTML += `<li><b>${name}:</b> ✅ Full: ${entry.full}, 🌓 Half: ${entry.half}, ❌ Absent: ${entry.absent}</li>`;
+      let summaryHTML = `<h3>📅 Date-wise Summary</h3><table><tr><th>Date</th><th>Full</th><th>Half</th><th>Absent</th></tr>`;
+      for (const date in dateWiseSummary) {
+        const sum = dateWiseSummary[date];
+        summaryHTML += `<tr><td>${date}</td><td>${sum.full}</td><td>${sum.half}</td><td>${sum.absent}</td></tr>`;
       }
-      summaryHTML += `</ul>`;
+      summaryHTML += `</table>`;
+      document.getElementById("summary").innerHTML = summaryHTML;
+    }
 
-      document.getElementById("summarySection").innerHTML = summaryHTML;
+    async function downloadPDF() {
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF();
+
+      const summary = document.getElementById("summary").innerText;
+      const results = document.getElementById("results").innerText;
+
+      let y = 10;
+      doc.setFontSize(12);
+      doc.text("📊 Attendance Report", 10, y);
+      y += 10;
+
+      summary.split("\n").forEach(line => {
+        doc.text(line, 10, y);
+        y += 7;
+      });
+
+      y += 10;
+
+      results.split("\n").forEach(line => {
+        if (y > 280) {
+          doc.addPage();
+          y = 10;
+        }
+        doc.text(line, 10, y);
+        y += 7;
+      });
+
+      doc.save("Attendance_Report.pdf");
     }
   </script>
 </body>
