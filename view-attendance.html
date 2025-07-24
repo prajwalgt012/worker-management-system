@@ -7,7 +7,6 @@
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
-
   <style>
     * { box-sizing: border-box; }
     body {
@@ -54,15 +53,6 @@
     button:hover {
       background-color: #e6b800;
     }
-    .summary-box {
-      text-align: left;
-      margin-top: 20px;
-      padding: 10px;
-      border: 1px solid #ddd;
-      border-radius: 10px;
-      background: #f9f9f9;
-      font-size: 0.95rem;
-    }
     .table-container {
       overflow-x: auto;
       margin-top: 20px;
@@ -80,41 +70,21 @@
     th {
       background-color: #ffcc00;
     }
-    @media (max-width: 600px) {
-      h2 { font-size: 1.2rem; }
-      .button-group {
-        display: flex;
-        flex-direction: column;
-        gap: 10px;
-        align-items: center;
-      }
-      input[type="date"] {
-        max-width: 100%;
-      }
-    }
   </style>
 </head>
-
 <body>
   <div class="card" id="reportSection">
-    <h2>📊 Attendance Report</h2>
-
-    <div class="button-group" style="text-align:center">
+    <h2>📊 Attendance Matrix (Date vs Workers)</h2>
+    <div style="text-align:center" class="button-group">
       <label for="startDate">Start Date:</label>
       <input type="date" id="startDate" />
-
       <label for="endDate">End Date:</label>
       <input type="date" id="endDate" />
-
       <button onclick="loadAttendance()">🔍 View Report</button>
       <button onclick="downloadPDF()">📥 Download PDF</button>
     </div>
-
-    <div id="attendancePDFContent">
-      <div id="summarySection" class="summary-box"></div>
-      <div class="table-container">
-        <div id="attendanceTable"></div>
-      </div>
+    <div class="table-container" id="attendancePDFContent">
+      <div id="attendanceTable"></div>
     </div>
   </div>
 
@@ -128,22 +98,23 @@
     const db = firebase.firestore();
 
     const today = new Date().toISOString().split("T")[0];
-    document.getElementById("startDate").setAttribute("max", today);
-    document.getElementById("endDate").setAttribute("max", today);
+    document.getElementById("startDate").max = today;
+    document.getElementById("endDate").max = today;
 
     async function loadAttendance() {
       const start = document.getElementById("startDate").value;
       const end = document.getElementById("endDate").value;
-      if (!start || !end) return alert("⚠️ Please select both start and end dates.");
-
+      if (!start || !end) return alert("⚠️ Please select both dates.");
       const startDate = new Date(start);
       const endDate = new Date(end);
-      if (startDate > endDate) return alert("❌ Start date must be before end date.");
+      if (startDate > endDate) return alert("❌ Invalid range");
 
       const workersSnap = await db.collection("workers").get();
       const workers = {};
+      const workerIds = [];
       workersSnap.forEach(doc => {
         workers[doc.id] = doc.data();
+        workerIds.push(doc.id);
       });
 
       const attendanceSnap = await db.collection("attendance")
@@ -152,119 +123,82 @@
         .orderBy("date")
         .get();
 
-      const records = [];
+      const attendanceMap = {}; // { date: { workerId: status } }
+      const dateSet = new Set();
+
       attendanceSnap.forEach(doc => {
         const data = doc.data();
-        if (data.status) {
-          records.push(data);
-        }
+        const date = data.date;
+        if (!attendanceMap[date]) attendanceMap[date] = {};
+        attendanceMap[date][data.workerId] = data.status;
+        dateSet.add(date);
       });
 
-      if (records.length === 0) {
+      const dates = Array.from(dateSet).sort();
+      if (dates.length === 0) {
         document.getElementById("attendanceTable").innerHTML =
-          `<p style="text-align:center; color:gray;">📭 No attendance data found for the selected range.</p>`;
-        document.getElementById("summarySection").innerHTML = '';
+          `<p style="text-align:center; color:gray;">📭 No attendance data found.</p>`;
         return;
       }
 
-      let html = `<table>
-        <thead>
-        <tr>
-          <th>Date</th>
-          <th>Day</th>
-          <th>Name</th>
-          <th>Village</th>
-          <th>Status</th>
-          <th>Total</th>
-        </tr>
-        </thead>
-        <tbody>`;
-
-      const daySummary = {};
-      const nameSummary = {};
-      let totalFull = 0;
-      let totalHalf = 0;
-      let totalAbsent = 0;
-
-      records.forEach(record => {
-        const worker = workers[record.workerId];
-        const status = record.status || "absent";
-        const date = new Date(record.date);
-        const dateStr = record.date;
-        const day = date.toLocaleDateString('en-IN', { weekday: 'long' });
-
-        if (!daySummary[day]) daySummary[day] = { full: 0, half: 0, absent: 0 };
-        if (status === "full") {
-          daySummary[day].full += 1;
-          totalFull++;
-        } else if (status === "half") {
-          daySummary[day].half += 1;
-          totalHalf++;
-        } else {
-          daySummary[day].absent += 1;
-          totalAbsent++;
-        }
-
-        const workerName = worker?.name || '❓ Unknown';
-        if (!nameSummary[workerName]) nameSummary[workerName] = { full: 0, half: 0, absent: 0 };
-        if (status === "full") nameSummary[workerName].full += 1;
-        else if (status === "half") nameSummary[workerName].half += 1;
-        else nameSummary[workerName].absent += 1;
-
-        const emoji = status === "full" ? "✅ Full" :
-                      status === "half" ? "🌓 Half" : "❌ Absent";
-
-        const totalCell = status === "full" ? "✅ 1 / 🌓 0" :
-                          status === "half" ? "✅ 0 / 🌓 1" : "-";
-
-        html += `<tr>
-          <td>${dateStr}</td>
-          <td>${day}</td>
-          <td>${workerName}</td>
-          <td>${worker?.village || '-'}</td>
-          <td>${emoji}</td>
-          <td>${totalCell}</td>
-        </tr>`;
+      // Initialize column totals
+      const colTotals = {};
+      workerIds.forEach(id => {
+        colTotals[id] = { full: 0, half: 0, absent: 0 };
       });
 
-      html += `<tr>
-        <td colspan="5"><b>🔢 Total (All Workers)</b></td>
-        <td><b>✅ ${totalFull} / 🌓 ${totalHalf}</b></td>
-      </tr>`;
+      // Build table
+      let html = `<table><thead><tr><th>Date (Day)</th>`;
+      workerIds.forEach(id => {
+        html += `<th>${workers[id].name || '❓'}</th>`;
+      });
+      html += `<th>✅ Full</th><th>🌓 Half</th><th>❌ Absent</th></tr></thead><tbody>`;
 
-      html += "</tbody></table>";
+      dates.forEach(dateStr => {
+        const row = attendanceMap[dateStr];
+        const date = new Date(dateStr);
+        const day = date.toLocaleDateString('en-IN', { weekday: 'short' });
+        html += `<tr><td>${dateStr} (${day})</td>`;
+
+        let rowFull = 0, rowHalf = 0, rowAbsent = 0;
+
+        workerIds.forEach(id => {
+          const status = row?.[id] || 'absent';
+          let symbol = '❌';
+          if (status === 'full') {
+            symbol = '✅'; rowFull++; colTotals[id].full++;
+          } else if (status === 'half') {
+            symbol = '🌓'; rowHalf++; colTotals[id].half++;
+          } else {
+            rowAbsent++; colTotals[id].absent++;
+          }
+          html += `<td>${symbol}</td>`;
+        });
+
+        html += `<td>${rowFull}</td><td>${rowHalf}</td><td>${rowAbsent}</td></tr>`;
+      });
+
+      // Add total row
+      html += `<tr><th>Total</th>`;
+      workerIds.forEach(id => {
+        const t = colTotals[id];
+        html += `<th>✅ ${t.full}<br>🌓 ${t.half}<br>❌ ${t.absent}</th>`;
+      });
+      html += `<th>-</th><th>-</th><th>-</th></tr>`;
+      html += `</tbody></table>`;
+
       document.getElementById("attendanceTable").innerHTML = html;
-
-      let summaryHTML = `<h3>📈 Summary by Day</h3><ul>`;
-      for (const day in daySummary) {
-        summaryHTML += `<li><b>${day}:</b> ✅ Full: ${daySummary[day].full}, 🌓 Half: ${daySummary[day].half}, ❌ Absent: ${daySummary[day].absent}</li>`;
-      }
-      summaryHTML += `</ul><h4>📊 Grand Total:</h4>
-        <ul>
-          <li>✅ Total Full: ${totalFull}</li>
-          <li>🌓 Total Half: ${totalHalf}</li>
-          <li>❌ Total Absent: ${totalAbsent}</li>
-        </ul>`;
-
-      summaryHTML += `<h3>🧑‍🤝‍🧑 Summary by Name</h3><ul>`;
-      for (const name in nameSummary) {
-        summaryHTML += `<li><b>${name}:</b> ✅ Full: ${nameSummary[name].full}, 🌓 Half: ${nameSummary[name].half}, ❌ Absent: ${nameSummary[name].absent}</li>`;
-      }
-      summaryHTML += `</ul>`;
-
-      document.getElementById("summarySection").innerHTML = summaryHTML;
     }
 
     function downloadPDF() {
       const element = document.getElementById("attendancePDFContent");
-      const opt = {
+      html2pdf().set({
         margin: 0.5,
-        filename: 'Attendance_Report.pdf',
+        filename: 'Attendance_Matrix_Report.pdf',
         image: { type: 'jpeg', quality: 0.98 },
-        html2canvas: { scale: 3, scrollY: 0, useCORS: true },
-        jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' }
-      };
-      html2pdf().set(opt).from(element).save();
+        html2canvas: { scale: 2 },
+        jsPDF: { unit: 'in', format: 'a4', orientation: 'landscape' }
+      }).from(element).save();
     }
   </script>
 </body>
