@@ -155,18 +155,19 @@
       const records = [];
       attendanceSnap.forEach(doc => {
         const data = doc.data();
-        if (data.status) {  // Only if status exists (full, half, absent)
+        if (data.status) {
           records.push(data);
         }
       });
 
       if (records.length === 0) {
-        document.getElementById("attendanceTable").innerHTML = <p style="text-align:center; color:gray;">📭 No attendance data found for the selected range.</p>;
+        document.getElementById("attendanceTable").innerHTML =
+          `<p style="text-align:center; color:gray;">📭 No attendance data found for the selected range.</p>`;
         document.getElementById("summarySection").innerHTML = '';
         return;
       }
 
-      let html = <table>
+      let html = `<table>
         <thead>
         <tr>
           <th>Date</th>
@@ -176,7 +177,7 @@
           <th>Status</th>
         </tr>
         </thead>
-        <tbody>;
+        <tbody>`;
 
       const summary = {};
       let totalFull = 0;
@@ -189,38 +190,44 @@
         const date = new Date(record.date);
         const dateStr = record.date;
         const day = date.toLocaleDateString('en-IN', { weekday: 'long' });
+
+        if (!summary[day]) summary[day] = { full: 0, half: 0, absent: 0 };
+        if (status === "full") {
+          summary[day].full += 1;
+          totalFull++;
+        } else if (status === "half") {
+          summary[day].half += 1;
+          totalHalf++;
+        } else {
+          summary[day].absent += 1;
+          totalAbsent++;
+        }
+
         const emoji = status === "full" ? "✅ Full" :
                       status === "half" ? "🌓 Half" : "❌ Absent";
 
-        if (!summary[day]) summary[day] = { full: 0, half: 0, absent: 0 };
-        summary[day][status] += 1;
-
-        if (status === "full") totalFull++;
-        else if (status === "half") totalHalf++;
-        else totalAbsent++;
-
-        html += <tr>
+        html += `<tr>
           <td>${dateStr}</td>
           <td>${day}</td>
           <td>${worker?.name || '❓ Unknown'}</td>
           <td>${worker?.village || '-'}</td>
           <td>${emoji}</td>
-        </tr>;
+        </tr>`;
       });
 
       html += "</tbody></table>";
       document.getElementById("attendanceTable").innerHTML = html;
 
-      let summaryHTML = <h3>📈 Summary by Day</h3><ul>;
+      let summaryHTML = `<h3>📈 Summary by Day</h3><ul>`;
       for (const day in summary) {
-        summaryHTML += <li><b>${day}:</b> ✅ Full: ${summary[day].full}, 🌓 Half: ${summary[day].half}, ❌ Absent: ${summary[day].absent}</li>;
+        summaryHTML += `<li><b>${day}:</b> ✅ Full: ${summary[day].full}, 🌓 Half: ${summary[day].half}, ❌ Absent: ${summary[day].absent}</li>`;
       }
-      summaryHTML += </ul><h4>📊 Grand Total:</h4>
+      summaryHTML += `</ul><h4>📊 Grand Total:</h4>
         <ul>
           <li>✅ Total Full: ${totalFull}</li>
           <li>🌓 Total Half: ${totalHalf}</li>
           <li>❌ Total Absent: ${totalAbsent}</li>
-        </ul>;
+        </ul>`;
 
       document.getElementById("summarySection").innerHTML = summaryHTML;
     }
@@ -238,4 +245,4 @@
     }
   </script>
 </body>
-</html> 
+</html>
