@@ -70,6 +70,15 @@
     th {
       background-color: #ffcc00;
     }
+    .summary-box {
+      text-align: left;
+      margin-top: 20px;
+      padding: 10px;
+      border: 1px solid #ddd;
+      border-radius: 10px;
+      background: #f9f9f9;
+      font-size: 0.95rem;
+    }
   </style>
 </head>
 <body>
@@ -85,6 +94,7 @@
     </div>
     <div class="table-container" id="attendancePDFContent">
       <div id="attendanceTable"></div>
+      <div id="summarySection" class="summary-box"></div>
     </div>
   </div>
 
@@ -138,6 +148,7 @@
       if (dates.length === 0) {
         document.getElementById("attendanceTable").innerHTML =
           `<p style="text-align:center; color:gray;">📭 No attendance data found.</p>`;
+        document.getElementById("summarySection").innerHTML = '';
         return;
       }
 
@@ -147,12 +158,13 @@
         colTotals[id] = { full: 0, half: 0, absent: 0 };
       });
 
-      // Build table
       let html = `<table><thead><tr><th>Date (Day)</th>`;
       workerIds.forEach(id => {
         html += `<th>${workers[id].name || '❓'}</th>`;
       });
       html += `<th>✅ Full</th><th>🌓 Half</th><th>❌ Absent</th></tr></thead><tbody>`;
+
+      let grandFull = 0, grandHalf = 0, grandAbsent = 0;
 
       dates.forEach(dateStr => {
         const row = attendanceMap[dateStr];
@@ -176,9 +188,11 @@
         });
 
         html += `<td>${rowFull}</td><td>${rowHalf}</td><td>${rowAbsent}</td></tr>`;
+        grandFull += rowFull;
+        grandHalf += rowHalf;
+        grandAbsent += rowAbsent;
       });
 
-      // Add total row
       html += `<tr><th>Total</th>`;
       workerIds.forEach(id => {
         const t = colTotals[id];
@@ -186,8 +200,19 @@
       });
       html += `<th>-</th><th>-</th><th>-</th></tr>`;
       html += `</tbody></table>`;
-
       document.getElementById("attendanceTable").innerHTML = html;
+
+      // Summary Section
+      const summaryHTML = `
+        <h3>📅 Attendance Summary (Selected Dates)</h3>
+        <ul>
+          <li>✅ Total Full: <b>${grandFull}</b></li>
+          <li>🌓 Total Half: <b>${grandHalf}</b></li>
+          <li>❌ Total Absent: <b>${grandAbsent}</b></li>
+          <li>👥 Total Workers: <b>${workerIds.length}</b></li>
+          <li>🗓️ Total Days: <b>${dates.length}</b></li>
+        </ul>`;
+      document.getElementById("summarySection").innerHTML = summaryHTML;
     }
 
     function downloadPDF() {
