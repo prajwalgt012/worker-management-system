@@ -13,7 +13,7 @@
       font-family: 'Segoe UI', sans-serif;
       margin: 0;
       padding: 0;
-      background-color: #ffffff;
+      background-color: #fff;
       color: #000;
     }
     .card {
@@ -21,7 +21,7 @@
       margin: 20px auto;
       padding: 20px;
       border-radius: 10px;
-      background-color: #fefefe;
+      background-color: #fff;
       box-shadow: 0 0 8px rgba(0, 0, 0, 0.1);
     }
     h2 {
@@ -145,7 +145,7 @@
         .orderBy("date")
         .get();
 
-      const attendanceMap = {}; // { date: { workerId: status } }
+      const attendanceMap = {};
       const dateSet = new Set();
 
       attendanceSnap.forEach(doc => {
@@ -213,7 +213,6 @@
       html += `</tbody></table>`;
       document.getElementById("attendanceTable").innerHTML = html;
 
-      // ✅ Summary Section
       const summaryHTML = `
         <h3>📅 Attendance Summary (Selected Dates)</h3>
         <ul>
@@ -227,27 +226,22 @@
     }
 
     function downloadPDF() {
-      const element = document.getElementById("attendancePDFContent");
-      const width = element.scrollWidth;
+      const source = document.getElementById("attendancePDFContent");
+      const clone = source.cloneNode(true);
+      clone.style.width = "100%";
+      const container = document.createElement("div");
+      container.appendChild(clone);
+      document.body.appendChild(container);
 
       html2pdf().set({
-        margin: 0.5,
+        margin: 0.2,
         filename: 'Attendance_Matrix_Report.pdf',
         image: { type: 'jpeg', quality: 0.98 },
-        html2canvas: {
-          scale: 2,
-          scrollX: 0,
-          scrollY: 0,
-          useCORS: true,
-          width: width,
-          windowWidth: width
-        },
-        jsPDF: {
-          unit: 'in',
-          format: 'a4',
-          orientation: 'landscape'
-        }
-      }).from(element).save();
+        html2canvas: { scale: 3, scrollY: 0 },
+        jsPDF: { unit: 'in', format: 'a4', orientation: 'landscape' }
+      }).from(clone).save().then(() => {
+        document.body.removeChild(container);
+      });
     }
   </script>
 </body>
