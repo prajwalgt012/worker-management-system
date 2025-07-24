@@ -148,43 +148,41 @@ async function loadAttendance() {
 
   let html = `<table><thead><tr><th>Worker</th>`;
   dateHeaders.forEach(dh => html += `<th>${dh}</th>`);
-  html += `<th>✅</th><th>🌓</th><th>❌</th></tr></thead><tbody>`;
+  html += `<th>✅</th><th>🌓</th></tr></thead><tbody>`;
 
   let dayTotals = {};
-  dates.forEach(d => dayTotals[d] = { full: 0, half: 0, absent: 0 });
+  dates.forEach(d => dayTotals[d] = { full: 0, half: 0 });
 
   workerIds.forEach(wid => {
     const name = workers[wid].name || '❓';
     html += `<tr><td>${name}</td>`;
-    let f = 0, h = 0, a = 0;
+    let f = 0, h = 0;
     dates.forEach(d => {
       const status = attendanceMap[wid]?.[d] || 'absent';
       const emoji = status === 'full' ? '✅' : status === 'half' ? '🌓' : '❌';
       if (status === 'full') f++, dayTotals[d].full++;
       else if (status === 'half') h++, dayTotals[d].half++;
-      else a++, dayTotals[d].absent++;
       html += `<td>${emoji}</td>`;
     });
-    html += `<td>${f}</td><td>${h}</td><td>${a}</td></tr>`;
+    html += `<td>${f}</td><td>${h}</td></tr>`;
   });
 
   html += `<tr><th>Total</th>`;
   dates.forEach(d => {
-    html += `<th>✅ ${dayTotals[d].full}<br>🌓 ${dayTotals[d].half}<br>❌ ${dayTotals[d].absent}</th>`;
+    html += `<th>✅ ${dayTotals[d].full}<br>🌓 ${dayTotals[d].half}</th>`;
   });
-  html += `<th>-</th><th>-</th><th>-</th></tr>`;
+  html += `<th>-</th><th>-</th></tr>`;
   html += `</tbody></table>`;
   document.getElementById("attendanceTable").innerHTML = html;
 
   const totalFull = Object.values(dayTotals).reduce((sum, d) => sum + d.full, 0);
   const totalHalf = Object.values(dayTotals).reduce((sum, d) => sum + d.half, 0);
-  const totalAbsent = Object.values(dayTotals).reduce((sum, d) => sum + d.absent, 0);
+
   document.getElementById("summarySection").innerHTML = `
     <h3>📅 Summary</h3>
     <ul>
       <li>✅ Total Full: <b>${totalFull}</b></li>
       <li>🌓 Total Half: <b>${totalHalf}</b></li>
-      <li>❌ Total Absent: <b>${totalAbsent}</b></li>
       <li>👥 Workers: <b>${workerIds.length}</b></li>
       <li>🗓️ Days: <b>${dates.length}</b></li>
     </ul>`;
