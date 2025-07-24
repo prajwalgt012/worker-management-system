@@ -59,13 +59,13 @@
     }
     table {
       width: 100%;
-      min-width: 600px;
       border-collapse: collapse;
     }
     th, td {
       padding: 10px;
       text-align: center;
       border: 1px solid #ddd;
+      white-space: nowrap;
     }
     th {
       background-color: #ffcc00;
@@ -78,6 +78,18 @@
       border-radius: 10px;
       background: #f9f9f9;
       font-size: 0.95rem;
+    }
+    @media (max-width: 600px) {
+      h2 { font-size: 1.2rem; }
+      .button-group {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        align-items: center;
+      }
+      input[type="date"] {
+        max-width: 100%;
+      }
     }
   </style>
 </head>
@@ -152,7 +164,6 @@
         return;
       }
 
-      // Initialize column totals
       const colTotals = {};
       workerIds.forEach(id => {
         colTotals[id] = { full: 0, half: 0, absent: 0 };
@@ -202,7 +213,7 @@
       html += `</tbody></table>`;
       document.getElementById("attendanceTable").innerHTML = html;
 
-      // Summary Section
+      // ✅ Summary Section
       const summaryHTML = `
         <h3>📅 Attendance Summary (Selected Dates)</h3>
         <ul>
@@ -217,12 +228,25 @@
 
     function downloadPDF() {
       const element = document.getElementById("attendancePDFContent");
+      const width = element.scrollWidth;
+
       html2pdf().set({
         margin: 0.5,
         filename: 'Attendance_Matrix_Report.pdf',
         image: { type: 'jpeg', quality: 0.98 },
-        html2canvas: { scale: 2 },
-        jsPDF: { unit: 'in', format: 'a4', orientation: 'landscape' }
+        html2canvas: {
+          scale: 2,
+          scrollX: 0,
+          scrollY: 0,
+          useCORS: true,
+          width: width,
+          windowWidth: width
+        },
+        jsPDF: {
+          unit: 'in',
+          format: 'a4',
+          orientation: 'landscape'
+        }
       }).from(element).save();
     }
   </script>
