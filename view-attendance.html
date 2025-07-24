@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>📅 Attendance Report (Responsive)</title>
+  <title>📅 Worker-wise Attendance Matrix</title>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
@@ -25,8 +25,6 @@
       box-shadow: 0 0 8px rgba(0, 0, 0, 0.1);
     }
     h2 {
-      margin-bottom: 20px;
-      font-size: 1.5rem;
       text-align: center;
     }
     label {
@@ -48,202 +46,164 @@
       border-radius: 6px;
       cursor: pointer;
       font-weight: bold;
-      color: #000;
-    }
-    button:hover {
-      background-color: #e6b800;
     }
     .table-container {
       overflow-x: auto;
-      overflow-y: auto;
       margin-top: 20px;
       max-height: 80vh;
-      max-width: 100%;
-      padding: 10px;
       border: 1px solid #ddd;
+      padding: 10px;
     }
     table {
-      width: 100%;
       border-collapse: collapse;
+      width: 100%;
     }
     th, td {
+      border: 1px solid #ddd;
       padding: 10px;
       text-align: center;
-      border: 1px solid #ddd;
       white-space: nowrap;
     }
     th {
       background-color: #ffcc00;
     }
     .summary-box {
-      text-align: left;
       margin-top: 20px;
       padding: 10px;
-      border: 1px solid #ddd;
-      border-radius: 10px;
       background: #f9f9f9;
-      font-size: 0.95rem;
-    }
-    @media (max-width: 600px) {
-      h2 { font-size: 1.2rem; }
-      .button-group {
-        display: flex;
-        flex-direction: column;
-        gap: 10px;
-        align-items: center;
-      }
-      input[type="date"] {
-        max-width: 100%;
-      }
+      border: 1px solid #ccc;
+      border-radius: 6px;
     }
   </style>
 </head>
 <body>
-  <div class="card" id="reportSection">
-    <h2>📊 Attendance Matrix (Date vs Workers)</h2>
-    <div style="text-align:center" class="button-group">
+  <div class="card">
+    <h2>📊 Worker-wise Attendance Matrix</h2>
+    <div style="text-align:center">
       <label for="startDate">Start Date:</label>
-      <input type="date" id="startDate" />
+      <input type="date" id="startDate">
       <label for="endDate">End Date:</label>
-      <input type="date" id="endDate" />
+      <input type="date" id="endDate">
       <button onclick="loadAttendance()">🔍 View Report</button>
       <button onclick="downloadPDF()">📥 Download PDF</button>
     </div>
+
     <div class="table-container" id="attendancePDFContent">
       <div id="attendanceTable"></div>
       <div id="summarySection" class="summary-box"></div>
     </div>
   </div>
 
-  <script>
-    const firebaseConfig = {
-      apiKey: "AIzaSyC3aue5Fg1Rpqk3rzkjQiQTBe76U6RA7GM",
-      authDomain: "worker-management-50d6d.firebaseapp.com",
-      projectId: "worker-management-50d6d"
-    };
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.firestore();
+<script>
+const firebaseConfig = {
+  apiKey: "AIzaSyC3aue5Fg1Rpqk3rzkjQiQTBe76U6RA7GM",
+  authDomain: "worker-management-50d6d.firebaseapp.com",
+  projectId: "worker-management-50d6d"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
 
-    const today = new Date().toISOString().split("T")[0];
-    document.getElementById("startDate").max = today;
-    document.getElementById("endDate").max = today;
+async function loadAttendance() {
+  const start = document.getElementById("startDate").value;
+  const end = document.getElementById("endDate").value;
+  if (!start || !end) return alert("Select both dates");
 
-    async function loadAttendance() {
-      const start = document.getElementById("startDate").value;
-      const end = document.getElementById("endDate").value;
-      if (!start || !end) return alert("⚠️ Please select both dates.");
-      const startDate = new Date(start);
-      const endDate = new Date(end);
-      if (startDate > endDate) return alert("❌ Invalid range");
+  const startDate = new Date(start);
+  const endDate = new Date(end);
+  if (startDate > endDate) return alert("Invalid range");
 
-      const workersSnap = await db.collection("workers").get();
-      const workers = {};
-      const workerIds = [];
-      workersSnap.forEach(doc => {
-        workers[doc.id] = doc.data();
-        workerIds.push(doc.id);
-      });
+  const workersSnap = await db.collection("workers").get();
+  const workers = {}, workerIds = [];
+  workersSnap.forEach(doc => {
+    workers[doc.id] = doc.data();
+    workerIds.push(doc.id);
+  });
 
-      const attendanceSnap = await db.collection("attendance")
-        .where("date", ">=", start)
-        .where("date", "<=", end)
-        .orderBy("date")
-        .get();
+  const attSnap = await db.collection("attendance")
+    .where("date", ">=", start)
+    .where("date", "<=", end)
+    .orderBy("date").get();
 
-      const attendanceMap = {};
-      const dateSet = new Set();
+  const attendanceMap = {}, dateSet = new Set();
+  attSnap.forEach(doc => {
+    const d = doc.data();
+    if (!attendanceMap[d.workerId]) attendanceMap[d.workerId] = {};
+    attendanceMap[d.workerId][d.date] = d.status;
+    dateSet.add(d.date);
+  });
 
-      attendanceSnap.forEach(doc => {
-        const data = doc.data();
-        const date = data.date;
-        if (!attendanceMap[date]) attendanceMap[date] = {};
-        attendanceMap[date][data.workerId] = data.status;
-        dateSet.add(date);
-      });
+  const dates = Array.from(dateSet).sort();
+  if (dates.length === 0) {
+    document.getElementById("attendanceTable").innerHTML = `<p style='text-align:center'>📭 No data found</p>`;
+    return;
+  }
 
-      const dates = Array.from(dateSet).sort();
-      if (dates.length === 0) {
-        document.getElementById("attendanceTable").innerHTML =
-          `<p style="text-align:center; color:gray;">📭 No attendance data found.</p>`;
-        document.getElementById("summarySection").innerHTML = '';
-        return;
-      }
+  const dateHeaders = dates.map(d => {
+    const day = new Date(d).toLocaleDateString('en-IN', { weekday: 'short' });
+    return `${d} (${day})`;
+  });
 
-      const colTotals = {};
-      workerIds.forEach(id => {
-        colTotals[id] = { full: 0, half: 0, absent: 0 };
-      });
+  let html = `<table><thead><tr><th>Worker</th>`;
+  dateHeaders.forEach(dh => html += `<th>${dh}</th>`);
+  html += `<th>✅</th><th>🌓</th><th>❌</th></tr></thead><tbody>`;
 
-      let html = `<table><thead><tr><th>Date (Day)</th>`;
-      workerIds.forEach(id => {
-        html += `<th>${workers[id].name || '❓'}</th>`;
-      });
-      html += `<th>✅ Full</th><th>🌓 Half</th><th>❌ Absent</th></tr></thead><tbody>`;
+  let dayTotals = {};
+  dates.forEach(d => dayTotals[d] = { full: 0, half: 0, absent: 0 });
 
-      let grandFull = 0, grandHalf = 0, grandAbsent = 0;
+  workerIds.forEach(wid => {
+    const name = workers[wid].name || '❓';
+    html += `<tr><td>${name}</td>`;
+    let f = 0, h = 0, a = 0;
+    dates.forEach(d => {
+      const status = attendanceMap[wid]?.[d] || 'absent';
+      const emoji = status === 'full' ? '✅' : status === 'half' ? '🌓' : '❌';
+      if (status === 'full') f++, dayTotals[d].full++;
+      else if (status === 'half') h++, dayTotals[d].half++;
+      else a++, dayTotals[d].absent++;
+      html += `<td>${emoji}</td>`;
+    });
+    html += `<td>${f}</td><td>${h}</td><td>${a}</td></tr>`;
+  });
 
-      dates.forEach(dateStr => {
-        const row = attendanceMap[dateStr];
-        const date = new Date(dateStr);
-        const day = date.toLocaleDateString('en-IN', { weekday: 'short' });
-        html += `<tr><td>${dateStr} (${day})</td>`;
+  html += `<tr><th>Total</th>`;
+  dates.forEach(d => {
+    html += `<th>✅ ${dayTotals[d].full}<br>🌓 ${dayTotals[d].half}<br>❌ ${dayTotals[d].absent}</th>`;
+  });
+  html += `<th>-</th><th>-</th><th>-</th></tr>`;
+  html += `</tbody></table>`;
+  document.getElementById("attendanceTable").innerHTML = html;
 
-        let rowFull = 0, rowHalf = 0, rowAbsent = 0;
+  const totalFull = Object.values(dayTotals).reduce((sum, d) => sum + d.full, 0);
+  const totalHalf = Object.values(dayTotals).reduce((sum, d) => sum + d.half, 0);
+  const totalAbsent = Object.values(dayTotals).reduce((sum, d) => sum + d.absent, 0);
+  document.getElementById("summarySection").innerHTML = `
+    <h3>📅 Summary</h3>
+    <ul>
+      <li>✅ Total Full: <b>${totalFull}</b></li>
+      <li>🌓 Total Half: <b>${totalHalf}</b></li>
+      <li>❌ Total Absent: <b>${totalAbsent}</b></li>
+      <li>👥 Workers: <b>${workerIds.length}</b></li>
+      <li>🗓️ Days: <b>${dates.length}</b></li>
+    </ul>`;
+}
 
-        workerIds.forEach(id => {
-          const status = row?.[id] || 'absent';
-          let symbol = '❌';
-          if (status === 'full') {
-            symbol = '✅'; rowFull++; colTotals[id].full++;
-          } else  (status === 'half') {
-            symbol = '🌓'; rowHalf++; colTotals[id].half++;
-          } 
-          html += `<td>${symbol}</td>`;
-        });
-
-        html += `<td>${rowFull}</td><td>${rowHalf}</td></tr>`;
-        grandFull += rowFull;
-        grandHalf += rowHalf;
-      });
-
-      html += `<tr><th>Total</th>`;
-      workerIds.forEach(id => {
-        const t = colTotals[id];
-        html += `<th>✅ ${t.full}<br>🌓 ${t.half}</th>`;
-      });
-      html += `<th>-</th><th>-</th><th>-</th></tr>`;
-      html += `</tbody></table>`;
-      document.getElementById("attendanceTable").innerHTML = html;
-
-      const summaryHTML = `
-        <h3>📅 Attendance Summary (Selected Dates)</h3>
-        <ul>
-          <li>✅ Total Full: <b>${grandFull}</b></li>
-          <li>🌓 Total Half: <b>${grandHalf}</b></li>
-          <li>👥 Total Workers: <b>${workerIds.length}</b></li>
-          <li>🗓️ Total Days: <b>${dates.length}</b></li>
-        </ul>`;
-      document.getElementById("summarySection").innerHTML = summaryHTML;
-    }
-
-    function downloadPDF() {
-      const source = document.getElementById("attendancePDFContent");
-      const clone = source.cloneNode(true);
-      clone.style.width = "100%";
-      const container = document.createElement("div");
-      container.appendChild(clone);
-      document.body.appendChild(container);
-
-      html2pdf().set({
-        margin: 0.2,
-        filename: 'Attendance_Matrix_Report.pdf',
-        image: { type: 'jpeg', quality: 0.98 },
-        html2canvas: { scale: 3, scrollY: 0 },
-        jsPDF: { unit: 'in', format: 'a4', orientation: 'landscape' }
-      }).from(clone).save().then(() => {
-        document.body.removeChild(container);
-      });
-    }
-  </script>
+function downloadPDF() {
+  const source = document.getElementById("attendancePDFContent");
+  const clone = source.cloneNode(true);
+  clone.style.width = "100%";
+  const container = document.createElement("div");
+  container.appendChild(clone);
+  document.body.appendChild(container);
+  html2pdf().set({
+    margin: 0.2,
+    filename: 'Worker_Attendance_Matrix.pdf',
+    image: { type: 'jpeg', quality: 0.98 },
+    html2canvas: { scale: 2 },
+    jsPDF: { unit: 'in', format: 'a4', orientation: 'landscape' }
+  }).from(clone).save().then(() => {
+    document.body.removeChild(container);
+  });
+}
+</script>
 </body>
 </html>
